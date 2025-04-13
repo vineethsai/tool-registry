@@ -1,7 +1,7 @@
-from pydantic import BaseModel, Field, EmailStr
 from typing import List, Optional
 from uuid import UUID
 from datetime import datetime
+from pydantic import BaseModel, Field
 
 class AgentCreate(BaseModel):
     """Model for creating a new agent."""
@@ -26,7 +26,7 @@ class TokenResponse(BaseModel):
 class SelfRegisterRequest(BaseModel):
     """Model for self-registration requests."""
     username: str
-    email: EmailStr
+    email: str
     password: str
     name: str
     organization: Optional[str] = None

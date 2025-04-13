@@ -43,6 +43,39 @@ class ToolAccessResponse(BaseModel):
     tool: ToolResponse
     credential: Dict
 
+class AccessRequestCreate(BaseModel):
+    """Request model for creating a new access request."""
+    agent_id: UUID
+    tool_id: UUID
+    policy_id: UUID
+    justification: str
+
+class AccessRequestResponse(BaseModel):
+    """Response model for access requests."""
+    request_id: UUID
+    status: str
+    agent_id: UUID
+    tool_id: UUID
+    policy_id: UUID
+    created_at: datetime
+
+class CredentialCreate(BaseModel):
+    """Request model for creating a new credential."""
+    agent_id: UUID
+    tool_id: UUID
+    credential_type: str
+    credential_value: Dict
+    expires_at: Optional[datetime] = None
+
+class StatisticsResponse(BaseModel):
+    """Response model for usage statistics."""
+    total_requests: int
+    successful_requests: int
+    failed_requests: int
+    average_duration_ms: float
+    by_period: List[Dict]
+    by_tool: List[Dict]
+
 app = FastAPI(
     title="GenAI Tool Registry",
     description="""
@@ -79,6 +112,14 @@ app = FastAPI(
         {
             "name": "Agents",
             "description": "Agent registration and management"
+        },
+        {
+            "name": "Policies",
+            "description": "Tool access policy management and enforcement"
+        },
+        {
+            "name": "Credentials",
+            "description": "Management of tool access credentials"
         }
     ]
 )
@@ -720,4 +761,599 @@ async def get_access_logs():
             "metadata": {}
         })
     
-    return logs 
+    return logs
+
+@app.get("/agents", response_model=List[AgentResponse], tags=["Agents"])
+@monitor_request
+async def list_agents(
+    agent_type: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20
+):
+    """
+    List all registered agents.
+    
+    - **agent_type**: Filter by agent type (user, service, bot)
+    - **page**: Page number (default: 1)
+    - **page_size**: Number of items per page (default: 20)
+    
+    Returns a paginated list of agents.
+    """
+    # For demo purposes, return a few agents
+    agents = []
+    for i in range(3):
+        agent_id = UUID(f"00000000-0000-0000-0000-00000000000{i+1}")
+        agent_type_val = "user" if i == 0 else "bot" if i == 1 else "service"
+        
+        # Skip if agent_type filter is provided and doesn't match
+        if agent_type and agent_type != agent_type_val:
+            continue
+            
+        agents.append(AgentResponse(
+            agent_id=agent_id,
+            name=f"Test Agent {i+1}",
+            description=f"Description for agent {i+1}",
+            roles=["user"] if i == 0 else ["tool_publisher"] if i == 1 else ["admin"],
+            creator=UUID("00000000-0000-0000-0000-000000000001"),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+            request_count=i*10,
+            allowed_tools=[],
+            is_admin=(i == 2)
+        ))
+    
+    # Apply pagination
+    start = (page - 1) * page_size
+    end = start + page_size
+    
+    return agents[start:end]
+
+@app.get("/agents/{agent_id}", response_model=AgentResponse, tags=["Agents"])
+@monitor_request
+async def get_agent(agent_id: UUID):
+    """
+    Get detailed information about a specific agent.
+    
+    - **agent_id**: UUID of the agent
+    
+    Returns the agent details if found.
+    """
+    # For demo purposes, return a mock agent
+    if str(agent_id) == "00000000-0000-0000-0000-000000000001":
+        return AgentResponse(
+            agent_id=agent_id,
+            name="Admin Agent",
+            description="Admin agent for testing",
+            roles=["admin", "tool_publisher", "policy_admin"],
+            creator=UUID("00000000-0000-0000-0000-000000000000"),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow(),
+            request_count=42,
+            allowed_tools=[],
+            is_admin=True
+        )
+    
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Agent not found"
+    )
+
+@app.put("/agents/{agent_id}", response_model=AgentResponse, tags=["Agents"])
+@monitor_request
+async def update_agent(agent_id: UUID, agent: AgentCreate):
+    """
+    Update an existing agent.
+    
+    - **agent_id**: UUID of the agent to update
+    - **agent**: Updated agent information
+    
+    Returns the updated agent information.
+    """
+    # Check if agent exists
+    if str(agent_id) != "00000000-0000-0000-0000-000000000001":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent not found"
+        )
+    
+    # Return updated agent
+    return AgentResponse(
+        agent_id=agent_id,
+        name=agent.name,
+        description=agent.description,
+        roles=agent.roles,
+        creator=UUID("00000000-0000-0000-0000-000000000000"),
+        created_at=datetime.utcnow(),
+        updated_at=datetime.utcnow(),
+        request_count=42,
+        allowed_tools=[],
+        is_admin=True
+    )
+
+@app.delete("/agents/{agent_id}", response_model=bool, tags=["Agents"])
+@monitor_request
+async def delete_agent(agent_id: UUID):
+    """
+    Delete an agent.
+    
+    - **agent_id**: UUID of the agent to delete
+    
+    Returns true if the deletion was successful.
+    """
+    # Check if agent exists
+    if str(agent_id) != "00000000-0000-0000-0000-000000000001":
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent not found"
+        )
+    
+    return True
+
+@app.get("/policies", response_model=List[PolicyResponse], tags=["Policies"])
+@monitor_request
+async def list_policies(
+    tool_id: Optional[UUID] = None,
+    page: int = 1, 
+    page_size: int = 20
+):
+    """
+    List all access policies.
+    
+    - **tool_id**: Filter by tool ID
+    - **page**: Page number (default: 1)
+    - **page_size**: Number of items per page (default: 20)
+    
+    Returns a paginated list of policies.
+    """
+    # For demo purposes, return a few policies
+    policies = []
+    for i in range(3):
+        policy_id = UUID(f"70000000-0000-0000-0000-00000000000{i+1}")
+        policy_tool_id = UUID("00000000-0000-0000-0000-000000000003")
+        
+        # Skip if tool_id filter is provided and doesn't match
+        if tool_id and tool_id != policy_tool_id:
+            continue
+            
+        policies.append(PolicyResponse(
+            policy_id=policy_id,
+            name=f"Test Policy {i+1}",
+            description=f"Description for policy {i+1}",
+            tool_id=policy_tool_id,
+            allowed_scopes=["read"] if i == 0 else ["read", "write"] if i == 1 else ["read", "write", "execute"],
+            conditions={"max_requests_per_day": 1000 * (i+1)},
+            rules={"require_approval": i == 2, "log_usage": True},
+            priority=10 * (i+1),
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        ))
+    
+    # Apply pagination
+    start = (page - 1) * page_size
+    end = start + page_size
+    
+    return policies[start:end]
+
+@app.get("/policies/{policy_id}", response_model=PolicyResponse, tags=["Policies"])
+@monitor_request
+async def get_policy(policy_id: UUID):
+    """
+    Get detailed information about a specific policy.
+    
+    - **policy_id**: UUID of the policy
+    
+    Returns the policy details if found.
+    """
+    # For demo purposes, return a mock policy
+    if str(policy_id).startswith("7000000"):
+        return PolicyResponse(
+            policy_id=policy_id,
+            name="Basic Access",
+            description="Basic access to the tool with rate limiting",
+            tool_id=UUID("00000000-0000-0000-0000-000000000003"),
+            allowed_scopes=["read", "execute"],
+            conditions={"max_requests_per_day": 1000},
+            rules={"require_approval": False, "log_usage": True},
+            priority=10,
+            created_at=datetime.utcnow(),
+            updated_at=datetime.utcnow()
+        )
+    
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Policy not found"
+    )
+
+@app.post("/policies", response_model=PolicyResponse, tags=["Policies"])
+@monitor_request
+async def create_policy(policy: PolicyCreate):
+    """
+    Create a new access policy.
+    
+    - **name**: Name of the policy
+    - **description**: Description of the policy
+    - **tool_id**: UUID of the tool this policy applies to
+    - **allowed_scopes**: List of allowed permission scopes
+    - **conditions**: Optional conditions for access (rate limiting, time restrictions)
+    - **rules**: Additional rules for policy enforcement
+    - **priority**: Priority for policy evaluation (higher numbers have higher priority)
+    
+    Returns the created policy with its assigned ID.
+    """
+    # Generate a new UUID for the policy
+    policy_id = uuid4()
+    now = datetime.utcnow()
+    
+    # Return the created policy
+    return PolicyResponse(
+        policy_id=policy_id,
+        name=policy.name,
+        description=policy.description,
+        tool_id=policy.tool_id,
+        allowed_scopes=policy.allowed_scopes,
+        conditions=policy.conditions or {},
+        rules=policy.rules or {},
+        priority=policy.priority or 10,
+        created_at=now,
+        updated_at=now
+    )
+
+@app.put("/policies/{policy_id}", response_model=PolicyResponse, tags=["Policies"])
+@monitor_request
+async def update_policy(policy_id: UUID, policy: PolicyCreate):
+    """
+    Update an existing policy.
+    
+    - **policy_id**: UUID of the policy to update
+    - **policy**: Updated policy information
+    
+    Returns the updated policy information.
+    """
+    # Check if policy exists
+    if not str(policy_id).startswith("7000000"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Policy not found"
+        )
+    
+    now = datetime.utcnow()
+    
+    # Return updated policy
+    return PolicyResponse(
+        policy_id=policy_id,
+        name=policy.name,
+        description=policy.description,
+        tool_id=policy.tool_id,
+        allowed_scopes=policy.allowed_scopes,
+        conditions=policy.conditions or {},
+        rules=policy.rules or {},
+        priority=policy.priority or 10,
+        created_at=now,
+        updated_at=now
+    )
+
+@app.delete("/policies/{policy_id}", status_code=204, tags=["Policies"])
+@monitor_request
+async def delete_policy(policy_id: UUID):
+    """
+    Delete a policy.
+    
+    - **policy_id**: UUID of the policy to delete
+    
+    Returns 204 No Content if successful.
+    """
+    # Check if policy exists
+    if not str(policy_id).startswith("7000000"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Policy not found"
+        )
+    
+    return JSONResponse(status_code=204, content=None)
+
+@app.post("/access/request", response_model=AccessRequestResponse, tags=["Access Control"])
+@monitor_request
+async def request_access(request: AccessRequestCreate):
+    """
+    Request access to a tool for an agent.
+    
+    - **agent_id**: UUID of the agent requesting access
+    - **tool_id**: UUID of the tool to access
+    - **policy_id**: UUID of the policy to apply
+    - **justification**: Reason for requesting access
+    
+    Returns the created access request with its status.
+    """
+    # Generate a new UUID for the request
+    request_id = uuid4()
+    now = datetime.utcnow()
+    
+    # Return the created request
+    return AccessRequestResponse(
+        request_id=request_id,
+        status="approved",  # For demo purposes, auto-approve
+        agent_id=request.agent_id,
+        tool_id=request.tool_id,
+        policy_id=request.policy_id,
+        created_at=now
+    )
+
+@app.get("/access/validate", tags=["Access Control"])
+@monitor_request
+async def validate_access(agent_id: UUID, tool_id: UUID):
+    """
+    Check if an agent has access to a tool.
+    
+    - **agent_id**: UUID of the agent
+    - **tool_id**: UUID of the tool
+    
+    Returns access validation details.
+    """
+    # For demo purposes, always return valid access
+    return {
+        "has_access": True,
+        "agent_id": agent_id,
+        "tool_id": tool_id,
+        "allowed_scopes": ["read", "execute"],
+        "policy_id": UUID("70000000-0000-0000-0000-000000000001"),
+        "policy_name": "Basic Access"
+    }
+
+@app.get("/access/requests", response_model=List[AccessRequestResponse], tags=["Access Control"])
+@monitor_request
+async def list_access_requests(
+    agent_id: Optional[UUID] = None,
+    tool_id: Optional[UUID] = None,
+    status: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20
+):
+    """
+    List access requests.
+    
+    - **agent_id**: Filter by agent ID
+    - **tool_id**: Filter by tool ID
+    - **status**: Filter by status (pending, approved, rejected)
+    - **page**: Page number (default: 1)
+    - **page_size**: Number of items per page (default: 20)
+    
+    Returns a paginated list of access requests.
+    """
+    # For demo purposes, return a few requests
+    requests = []
+    statuses = ["pending", "approved", "rejected"]
+    
+    for i in range(3):
+        request_id = UUID(f"80000000-0000-0000-0000-00000000000{i+1}")
+        request_agent_id = UUID("00000000-0000-0000-0000-000000000001")
+        request_tool_id = UUID("00000000-0000-0000-0000-000000000003")
+        request_status = statuses[i]
+        
+        # Apply filters if provided
+        if agent_id and agent_id != request_agent_id:
+            continue
+        if tool_id and tool_id != request_tool_id:
+            continue
+        if status and status != request_status:
+            continue
+            
+        requests.append(AccessRequestResponse(
+            request_id=request_id,
+            status=request_status,
+            agent_id=request_agent_id,
+            tool_id=request_tool_id,
+            policy_id=UUID("70000000-0000-0000-0000-000000000001"),
+            created_at=datetime.utcnow() - timedelta(hours=i)
+        ))
+    
+    # Apply pagination
+    start = (page - 1) * page_size
+    end = start + page_size
+    
+    return requests[start:end]
+
+@app.post("/credentials", response_model=CredentialResponse, tags=["Credentials"])
+@monitor_request
+async def create_credential(credential: CredentialCreate):
+    """
+    Create a new credential for a tool.
+    
+    - **agent_id**: UUID of the agent
+    - **tool_id**: UUID of the tool
+    - **credential_type**: Type of credential (e.g., api_key, oauth2)
+    - **credential_value**: Credential data (sensitive values)
+    - **expires_at**: Expiration date for the credential
+    
+    Returns the created credential (without sensitive values).
+    """
+    # Generate a new UUID for the credential
+    credential_id = uuid4()
+    now = datetime.utcnow()
+    
+    # Return the created credential (without sensitive values)
+    return CredentialResponse(
+        credential_id=credential_id,
+        agent_id=credential.agent_id,
+        tool_id=credential.tool_id,
+        credential_type=credential.credential_type,
+        expires_at=credential.expires_at or (now + timedelta(days=30)),
+        created_at=now,
+        is_active=True
+    )
+
+@app.get("/credentials", response_model=List[CredentialResponse], tags=["Credentials"])
+@monitor_request
+async def list_credentials(
+    agent_id: Optional[UUID] = None,
+    tool_id: Optional[UUID] = None,
+    page: int = 1,
+    page_size: int = 20
+):
+    """
+    List credentials.
+    
+    - **agent_id**: Filter by agent ID
+    - **tool_id**: Filter by tool ID
+    - **page**: Page number (default: 1)
+    - **page_size**: Number of items per page (default: 20)
+    
+    Returns a paginated list of credentials (without sensitive values).
+    """
+    # For demo purposes, return a few credentials
+    credentials = []
+    now = datetime.utcnow()
+    
+    for i in range(3):
+        credential_id = UUID(f"90000000-0000-0000-0000-00000000000{i+1}")
+        credential_agent_id = UUID("00000000-0000-0000-0000-000000000001")
+        credential_tool_id = UUID("00000000-0000-0000-0000-000000000003")
+        
+        # Apply filters if provided
+        if agent_id and agent_id != credential_agent_id:
+            continue
+        if tool_id and tool_id != credential_tool_id:
+            continue
+            
+        credentials.append(CredentialResponse(
+            credential_id=credential_id,
+            agent_id=credential_agent_id,
+            tool_id=credential_tool_id,
+            credential_type="api_key" if i == 0 else "oauth2" if i == 1 else "basic",
+            expires_at=now + timedelta(days=30-i),
+            created_at=now - timedelta(days=i),
+            is_active=True
+        ))
+    
+    # Apply pagination
+    start = (page - 1) * page_size
+    end = start + page_size
+    
+    return credentials[start:end]
+
+@app.get("/credentials/{credential_id}", response_model=CredentialResponse, tags=["Credentials"])
+@monitor_request
+async def get_credential(credential_id: UUID):
+    """
+    Get information about a specific credential.
+    
+    - **credential_id**: UUID of the credential
+    
+    Returns the credential details (without sensitive values).
+    """
+    # For demo purposes, return a mock credential
+    if str(credential_id).startswith("9000000"):
+        now = datetime.utcnow()
+        
+        return CredentialResponse(
+            credential_id=credential_id,
+            agent_id=UUID("00000000-0000-0000-0000-000000000001"),
+            tool_id=UUID("00000000-0000-0000-0000-000000000003"),
+            credential_type="api_key",
+            expires_at=now + timedelta(days=30),
+            created_at=now,
+            is_active=True
+        )
+    
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Credential not found"
+    )
+
+@app.delete("/credentials/{credential_id}", status_code=204, tags=["Credentials"])
+@monitor_request
+async def delete_credential(credential_id: UUID):
+    """
+    Delete a credential.
+    
+    - **credential_id**: UUID of the credential to delete
+    
+    Returns 204 No Content if successful.
+    """
+    # Check if credential exists
+    if not str(credential_id).startswith("9000000"):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Credential not found"
+        )
+    
+    return JSONResponse(status_code=204, content=None)
+
+@app.get("/logs", response_model=List[AccessLogResponse], tags=["Monitoring"])
+@monitor_request
+async def get_logs(
+    agent_id: Optional[UUID] = None,
+    tool_id: Optional[UUID] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+    status: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20
+):
+    """
+    Get usage logs.
+    
+    - **agent_id**: Filter by agent ID
+    - **tool_id**: Filter by tool ID
+    - **start_date**: Filter by start date
+    - **end_date**: Filter by end date
+    - **status**: Filter by status (success, error)
+    - **page**: Page number (default: 1)
+    - **page_size**: Number of items per page (default: 20)
+    
+    Returns a paginated list of usage logs.
+    """
+    # Reuse the existing logs implementation
+    return await get_access_logs()
+
+@app.get("/stats/usage", response_model=StatisticsResponse, tags=["Monitoring"])
+@monitor_request
+async def get_usage_statistics(
+    tool_id: Optional[UUID] = None,
+    period: str = "day",
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None
+):
+    """
+    Get usage statistics.
+    
+    - **tool_id**: Filter by tool ID
+    - **period**: Aggregation period (day, week, month)
+    - **start_date**: Filter by start date
+    - **end_date**: Filter by end date
+    
+    Returns aggregated usage statistics.
+    """
+    now = datetime.utcnow()
+    
+    # For demo purposes, return mock statistics
+    by_period = []
+    for i in range(7):
+        by_period.append({
+            "period": (now - timedelta(days=i)).strftime("%Y-%m-%d"),
+            "requests": 100 - i * 10,
+            "success_rate": 0.95 + (i * 0.005)
+        })
+    
+    by_tool = []
+    for i in range(3):
+        tool_id_val = UUID(f"00000000-0000-0000-0000-00000000000{i+3}")
+        
+        # Skip if tool_id filter is provided and doesn't match
+        if tool_id and tool_id != tool_id_val:
+            continue
+            
+        by_tool.append({
+            "tool_id": str(tool_id_val),
+            "tool_name": f"Test Tool {i+1}",
+            "requests": 500 - i * 100,
+            "success_rate": 0.97 - (i * 0.01)
+        })
+    
+    return StatisticsResponse(
+        total_requests=12500,
+        successful_requests=12250,
+        failed_requests=250,
+        average_duration_ms=145,
+        by_period=by_period,
+        by_tool=by_tool
+    ) 

@@ -54,6 +54,22 @@ services:
       timeout: 5s
       retries: 5
 
+  docs:
+    image: python:3.9-slim
+    volumes:
+      - ./postman:/app/postman
+    ports:
+      - "9000:8080"
+    working_dir: /app/postman
+    command: python -m http.server 8080
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/tool_registry_api_collection.json"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
 volumes:
   postgres_data:
   redis_data: 

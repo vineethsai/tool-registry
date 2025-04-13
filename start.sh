@@ -1,6 +1,10 @@
 #!/bin/bash
 set -e
 
+# Install email-validator to ensure it's available
+pip install --no-cache-dir email-validator==2.1.0
+echo "Installed email-validator"
+
 # Wait for PostgreSQL if using PostgreSQL
 if [[ $DATABASE_URL == postgresql* ]]; then
   echo "Waiting for PostgreSQL..."

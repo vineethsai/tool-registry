@@ -1,0 +1,51 @@
+{
+	"id": "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6",
+	"name": "Tool Registry API Environment",
+	"values": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8000/api/v1",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "accessToken",
+			"value": "",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "testToolId",
+			"value": "00000000-0000-0000-0000-000000000003",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "testAgentId",
+			"value": "00000000-0000-0000-0000-000000000001",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "testPolicyId",
+			"value": "70000000-0000-0000-0000-000000000001",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "testCredentialId",
+			"value": "90000000-0000-0000-0000-000000000001",
+			"type": "default",
+			"enabled": true
+		},
+		{
+			"key": "testCredentialToken",
+			"value": "test_credential_token",
+			"type": "default",
+			"enabled": true
+		}
+	],
+	"_postman_variable_scope": "environment",
+	"_postman_exported_at": "2023-06-30T12:00:00.000Z",
+	"_postman_exported_using": "Postman/10.14.9"
+} 

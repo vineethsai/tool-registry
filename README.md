@@ -63,6 +63,26 @@ Tool Registry is a comprehensive system for managing, securing, and controlling 
 
 The API will be available at http://localhost:8000.
 
+### Using the Postman Collection
+
+The project includes a comprehensive Postman collection for testing the API:
+
+1. Install [Postman](https://www.postman.com/downloads/)
+2. Import the collection from `postman/tool_registry_api_collection.json`
+3. Import the environment from `postman/tool_registry_environment.json`
+4. Select the "Tool Registry API Environment" from the environment dropdown
+
+To serve the Postman documentation locally, you can use the provided script:
+```
+./serve_postman_docs.sh
+```
+
+This will make the collection available at http://localhost:8080/tool_registry_api_collection.json.
+
+When running with Docker Compose, the Postman documentation is available at http://localhost:9000/tool_registry_api_collection.json.
+
+See [Postman Documentation](postman/README.md) for more details on using the collection.
+
 ## Usage Examples
 
 ### Register a Tool
@@ -115,6 +135,7 @@ For more examples, see [Usage Examples](docs/usage_examples.md).
 - [Schema Reference](docs/schema_reference.md)
 - [Security Model](docs/security.md)
 - [Deployment Guide](docs/deployment.md)
+- [Postman Collection](postman/README.md)
 
 ## Development
 

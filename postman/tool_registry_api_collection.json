@@ -1,0 +1,1003 @@
+{
+	"info": {
+		"_postman_id": "f8a9b2c3-d4e5-6f7a-8b9c-0d1e2f3a4b5c",
+		"name": "Tool Registry API",
+		"description": "A comprehensive collection to test the Tool Registry API including authentication, tools, agents, policies, credentials, and monitoring features.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"description": "Endpoints for agent authentication and API key management",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/x-www-form-urlencoded"
+							}
+						],
+						"body": {
+							"mode": "urlencoded",
+							"urlencoded": [
+								{
+									"key": "username",
+									"value": "admin",
+									"type": "text"
+								},
+								{
+									"key": "password",
+									"value": "admin123",
+									"type": "text"
+								}
+							]
+						},
+						"url": {
+							"raw": "{{baseUrl}}/token",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"token"
+							]
+						},
+						"description": "Authenticate agent and issue access token"
+					},
+					"response": []
+				},
+				{
+					"name": "Self Register",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"username\": \"newuser\",\n    \"password\": \"secure_password\",\n    \"name\": \"New User\",\n    \"email\": \"user@example.com\",\n    \"organization\": \"Example Org\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/register",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"register"
+							]
+						},
+						"description": "Register as a new user"
+					},
+					"response": []
+				},
+				{
+					"name": "Create API Key",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "{{accessToken}}",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"My Application Key\",\n    \"description\": \"API key for my application\",\n    \"expires_in_days\": 90,\n    \"permissions\": [\"access_tool:public\"]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api-keys",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api-keys"
+							]
+						},
+						"description": "Create an API key for programmatic access"
+					},
+					"response": []
+				},
+				{
+					"name": "Authenticate with API Key",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "api_key",
+								"value": "tr_testapikey123456789"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/auth/api-key",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"api-key"
+							]
+						},
+						"description": "Authenticate using an API key and return a JWT token"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Tools",
+			"description": "Endpoints for tool registration, discovery, and management",
+			"item": [
+				{
+					"name": "List Tools",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/tools?tags=text,ai&page=1&page_size=20",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tools"
+							],
+							"query": [
+								{
+									"key": "tags",
+									"value": "text,ai",
+									"description": "Filter by comma-separated tags"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "20"
+								}
+							]
+						},
+						"description": "List all available tools with optional filtering by tags"
+					},
+					"response": []
+				},
+				{
+					"name": "Search Tools",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/tools/search?query=image",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tools",
+								"search"
+							],
+							"query": [
+								{
+									"key": "query",
+									"value": "image",
+									"description": "Search query (searches in name, description, and tags)"
+								}
+							]
+						},
+						"description": "Search for tools based on a query string"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Tool",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/tools/00000000-0000-0000-0000-000000000003",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tools",
+								"00000000-0000-0000-0000-000000000003"
+							]
+						},
+						"description": "Get detailed information about a specific tool"
+					},
+					"response": []
+				},
+				{
+					"name": "Register Tool",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Text Summarizer\",\n    \"description\": \"Summarizes long text into concise points\",\n    \"version\": \"1.0.0\",\n    \"tool_metadata\": {\n        \"schema_version\": \"1.0.0\",\n        \"schema_type\": \"openapi\",\n        \"schema_data\": {\n            \"swagger\": \"2.0\",\n            \"info\": {\n                \"title\": \"Text Summarizer API\",\n                \"version\": \"1.0.0\"\n            },\n            \"paths\": {\n                \"/summarize\": {\n                    \"post\": {\n                        \"parameters\": [\n                            {\n                                \"name\": \"text\",\n                                \"in\": \"body\",\n                                \"required\": true,\n                                \"schema\": {\n                                    \"type\": \"string\"\n                                }\n                            }\n                        ],\n                        \"responses\": {\n                            \"200\": {\n                                \"description\": \"Successful response\",\n                                \"schema\": {\n                                    \"type\": \"object\",\n                                    \"properties\": {\n                                        \"summary\": {\n                                            \"type\": \"string\"\n                                        }\n                                    }\n                                }\n                            }\n                        }\n                    }\n                }\n            }\n        },\n        \"inputs\": {\n            \"text\": {\n                \"type\": \"string\",\n                \"required\": true,\n                \"description\": \"Text to summarize\"\n            },\n            \"length\": {\n                \"type\": \"integer\",\n                \"required\": false,\n                \"default\": 100,\n                \"description\": \"Max length of summary\"\n            }\n        },\n        \"outputs\": {\n            \"summary\": {\n                \"type\": \"string\",\n                \"description\": \"Generated summary\"\n            }\n        },\n        \"documentation_url\": \"https://example.com/text-summarizer-docs\",\n        \"provider\": \"AI Text Services\",\n        \"tags\": [\"text\", \"summarization\", \"nlp\"]\n    }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tools",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tools"
+							]
+						},
+						"description": "Register a new tool in the registry"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Tool",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Text Summarizer\",\n    \"description\": \"Updated description: Summarizes long text into concise points with customizable length\",\n    \"version\": \"1.1.0\",\n    \"tool_metadata\": {\n        \"schema_version\": \"1.0.0\",\n        \"schema_type\": \"openapi\",\n        \"schema_data\": {\n            \"swagger\": \"2.0\",\n            \"info\": {\n                \"title\": \"Text Summarizer API\",\n                \"version\": \"1.1.0\"\n            },\n            \"paths\": {\n                \"/summarize\": {\n                    \"post\": {\n                        \"parameters\": [\n                            {\n                                \"name\": \"text\",\n                                \"in\": \"body\",\n                                \"required\": true,\n                                \"schema\": {\n                                    \"type\": \"string\"\n                                }\n                            }\n                        ],\n                        \"responses\": {\n                            \"200\": {\n                                \"description\": \"Successful response\",\n                                \"schema\": {\n                                    \"type\": \"object\",\n                                    \"properties\": {\n                                        \"summary\": {\n                                            \"type\": \"string\"\n                                        }\n                                    }\n                                }\n                            }\n                        }\n                    }\n                }\n            }\n        },\n        \"inputs\": {\n            \"text\": {\n                \"type\": \"string\",\n                \"required\": true,\n                \"description\": \"Text to summarize\"\n            },\n            \"length\": {\n                \"type\": \"integer\",\n                \"required\": false,\n                \"default\": 100,\n                \"description\": \"Max length of summary\"\n            }\n        },\n        \"outputs\": {\n            \"summary\": {\n                \"type\": \"string\",\n                \"description\": \"Generated summary\"\n            }\n        },\n        \"documentation_url\": \"https://example.com/text-summarizer-docs\",\n        \"provider\": \"AI Text Services\",\n        \"tags\": [\"text\", \"summarization\", \"nlp\", \"ai\"]\n    }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tools/00000000-0000-0000-0000-000000000003",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tools",
+								"00000000-0000-0000-0000-000000000003"
+							]
+						},
+						"description": "Update an existing tool's details"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Tool",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/tools/00000000-0000-0000-0000-000000000003",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tools",
+								"00000000-0000-0000-0000-000000000003"
+							]
+						},
+						"description": "Delete a tool from the registry"
+					},
+					"response": []
+				},
+				{
+					"name": "Request Tool Access",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseUrl}}/tools/00000000-0000-0000-0000-000000000003/access?duration=60&scopes=read,execute",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tools",
+								"00000000-0000-0000-0000-000000000003",
+								"access"
+							],
+							"query": [
+								{
+									"key": "duration",
+									"value": "60",
+									"description": "Duration in minutes"
+								},
+								{
+									"key": "scopes",
+									"value": "read,execute",
+									"description": "Comma-separated list of requested scopes"
+								}
+							]
+						},
+						"description": "Request temporary access credentials for a specific tool"
+					},
+					"response": []
+				},
+				{
+					"name": "Validate Tool Access",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/tools/00000000-0000-0000-0000-000000000003/validate-access?token=test_credential_token",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tools",
+								"00000000-0000-0000-0000-000000000003",
+								"validate-access"
+							],
+							"query": [
+								{
+									"key": "token",
+									"value": "test_credential_token",
+									"description": "Credential token to validate"
+								}
+							]
+						},
+						"description": "Validate whether a credential token grants access to a tool"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Agents",
+			"description": "Endpoints for agent registration and management",
+			"item": [
+				{
+					"name": "List Agents",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/agents?agent_type=user&page=1&page_size=20",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"agents"
+							],
+							"query": [
+								{
+									"key": "agent_type",
+									"value": "user",
+									"description": "Filter by agent type (user, service, bot)"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "20"
+								}
+							]
+						},
+						"description": "List all registered agents with optional filtering"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Agent",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/agents/00000000-0000-0000-0000-000000000001",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"agents",
+								"00000000-0000-0000-0000-000000000001"
+							]
+						},
+						"description": "Get detailed information about a specific agent"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Agent",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Research Assistant\",\n    \"description\": \"AI assistant for research tasks\",\n    \"roles\": [\"user\"],\n    \"password\": \"secure_password\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/agents",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"agents"
+							]
+						},
+						"description": "Register a new agent"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Agent",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Research Assistant Pro\",\n    \"description\": \"Enhanced AI assistant for advanced research tasks\",\n    \"roles\": [\"user\", \"tool_publisher\"]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/agents/00000000-0000-0000-0000-000000000001",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"agents",
+								"00000000-0000-0000-0000-000000000001"
+							]
+						},
+						"description": "Update an existing agent"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Agent",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/agents/00000000-0000-0000-0000-000000000001",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"agents",
+								"00000000-0000-0000-0000-000000000001"
+							]
+						},
+						"description": "Delete an agent"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Policies",
+			"description": "Endpoints for policy management",
+			"item": [
+				{
+					"name": "List Policies",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/policies?tool_id=00000000-0000-0000-0000-000000000003&page=1&page_size=20",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"policies"
+							],
+							"query": [
+								{
+									"key": "tool_id",
+									"value": "00000000-0000-0000-0000-000000000003",
+									"description": "Filter by tool ID"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "20"
+								}
+							]
+						},
+						"description": "List all access policies with optional filtering by tool"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Policy",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/policies/70000000-0000-0000-0000-000000000001",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"policies",
+								"70000000-0000-0000-0000-000000000001"
+							]
+						},
+						"description": "Get detailed information about a specific policy"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Policy",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Basic Access\",\n    \"description\": \"Basic access to the tool with rate limiting\",\n    \"tool_id\": \"00000000-0000-0000-0000-000000000003\",\n    \"allowed_scopes\": [\"read\", \"execute\"],\n    \"conditions\": {\n        \"max_requests_per_day\": 1000,\n        \"allowed_hours\": {\n            \"start\": \"09:00\",\n            \"end\": \"17:00\"\n        }\n    },\n    \"rules\": {\n        \"require_approval\": false,\n        \"log_usage\": true\n    },\n    \"priority\": 10\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/policies",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"policies"
+							]
+						},
+						"description": "Create a new access policy"
+					},
+					"response": []
+				},
+				{
+					"name": "Update Policy",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Enhanced Access\",\n    \"description\": \"Enhanced access to the tool with increased rate limits\",\n    \"tool_id\": \"00000000-0000-0000-0000-000000000003\",\n    \"allowed_scopes\": [\"read\", \"write\", \"execute\"],\n    \"conditions\": {\n        \"max_requests_per_day\": 5000,\n        \"allowed_hours\": {\n            \"start\": \"00:00\",\n            \"end\": \"23:59\"\n        }\n    },\n    \"rules\": {\n        \"require_approval\": false,\n        \"log_usage\": true\n    },\n    \"priority\": 20\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/policies/70000000-0000-0000-0000-000000000001",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"policies",
+								"70000000-0000-0000-0000-000000000001"
+							]
+						},
+						"description": "Update an existing policy"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Policy",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/policies/70000000-0000-0000-0000-000000000001",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"policies",
+								"70000000-0000-0000-0000-000000000001"
+							]
+						},
+						"description": "Delete a policy"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Access Control",
+			"description": "Endpoints for requesting and validating tool access",
+			"item": [
+				{
+					"name": "Request Access",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"agent_id\": \"00000000-0000-0000-0000-000000000001\",\n    \"tool_id\": \"00000000-0000-0000-0000-000000000003\",\n    \"policy_id\": \"70000000-0000-0000-0000-000000000001\",\n    \"justification\": \"Required for automated data analysis pipeline\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/access/request",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"access",
+								"request"
+							]
+						},
+						"description": "Request access to a tool for an agent"
+					},
+					"response": []
+				},
+				{
+					"name": "Validate Access",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/access/validate?agent_id=00000000-0000-0000-0000-000000000001&tool_id=00000000-0000-0000-0000-000000000003",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"access",
+								"validate"
+							],
+							"query": [
+								{
+									"key": "agent_id",
+									"value": "00000000-0000-0000-0000-000000000001",
+									"description": "UUID of the agent"
+								},
+								{
+									"key": "tool_id",
+									"value": "00000000-0000-0000-0000-000000000003",
+									"description": "UUID of the tool"
+								}
+							]
+						},
+						"description": "Check if an agent has access to a tool"
+					},
+					"response": []
+				},
+				{
+					"name": "List Access Requests",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/access/requests?agent_id=00000000-0000-0000-0000-000000000001&tool_id=00000000-0000-0000-0000-000000000003&status=approved&page=1&page_size=20",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"access",
+								"requests"
+							],
+							"query": [
+								{
+									"key": "agent_id",
+									"value": "00000000-0000-0000-0000-000000000001",
+									"description": "Filter by agent ID"
+								},
+								{
+									"key": "tool_id",
+									"value": "00000000-0000-0000-0000-000000000003",
+									"description": "Filter by tool ID"
+								},
+								{
+									"key": "status",
+									"value": "approved",
+									"description": "Filter by status (pending, approved, rejected)"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "20"
+								}
+							]
+						},
+						"description": "List access requests with optional filtering"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Credentials",
+			"description": "Endpoints for credential management",
+			"item": [
+				{
+					"name": "Create Credential",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"agent_id\": \"00000000-0000-0000-0000-000000000001\",\n    \"tool_id\": \"00000000-0000-0000-0000-000000000003\",\n    \"credential_type\": \"api_key\",\n    \"credential_value\": {\n        \"api_key\": \"sk_test_abcdefghijklmnopqrstuvwxyz\"\n    },\n    \"expires_at\": \"2023-12-31T23:59:59Z\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/credentials",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"credentials"
+							]
+						},
+						"description": "Create a new credential for a tool"
+					},
+					"response": []
+				},
+				{
+					"name": "List Credentials",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/credentials?agent_id=00000000-0000-0000-0000-000000000001&tool_id=00000000-0000-0000-0000-000000000003&page=1&page_size=20",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"credentials"
+							],
+							"query": [
+								{
+									"key": "agent_id",
+									"value": "00000000-0000-0000-0000-000000000001",
+									"description": "Filter by agent ID"
+								},
+								{
+									"key": "tool_id",
+									"value": "00000000-0000-0000-0000-000000000003",
+									"description": "Filter by tool ID"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "20"
+								}
+							]
+						},
+						"description": "List credentials with optional filtering"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Credential",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/credentials/90000000-0000-0000-0000-000000000001",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"credentials",
+								"90000000-0000-0000-0000-000000000001"
+							]
+						},
+						"description": "Get information about a specific credential"
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Credential",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/credentials/90000000-0000-0000-0000-000000000001",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"credentials",
+								"90000000-0000-0000-0000-000000000001"
+							]
+						},
+						"description": "Delete a credential"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Monitoring",
+			"description": "Endpoints for monitoring tool usage and system health",
+			"item": [
+				{
+					"name": "Get Usage Logs",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/logs?agent_id=00000000-0000-0000-0000-000000000001&tool_id=00000000-0000-0000-0000-000000000003&start_date=2023-06-01T00:00:00Z&end_date=2023-06-30T23:59:59Z&status=success&page=1&page_size=20",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"logs"
+							],
+							"query": [
+								{
+									"key": "agent_id",
+									"value": "00000000-0000-0000-0000-000000000001",
+									"description": "Filter by agent ID"
+								},
+								{
+									"key": "tool_id",
+									"value": "00000000-0000-0000-0000-000000000003",
+									"description": "Filter by tool ID"
+								},
+								{
+									"key": "start_date",
+									"value": "2023-06-01T00:00:00Z",
+									"description": "Filter by start date (ISO format)"
+								},
+								{
+									"key": "end_date",
+									"value": "2023-06-30T23:59:59Z",
+									"description": "Filter by end date (ISO format)"
+								},
+								{
+									"key": "status",
+									"value": "success",
+									"description": "Filter by status (success, error)"
+								},
+								{
+									"key": "page",
+									"value": "1"
+								},
+								{
+									"key": "page_size",
+									"value": "20"
+								}
+							]
+						},
+						"description": "Get a list of tool usage logs with optional filtering"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Usage Statistics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/stats/usage?tool_id=00000000-0000-0000-0000-000000000003&period=day&start_date=2023-06-01T00:00:00Z&end_date=2023-06-30T23:59:59Z",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"stats",
+								"usage"
+							],
+							"query": [
+								{
+									"key": "tool_id",
+									"value": "00000000-0000-0000-0000-000000000003",
+									"description": "Filter by tool ID"
+								},
+								{
+									"key": "period",
+									"value": "day",
+									"description": "Aggregation period (day, week, month)"
+								},
+								{
+									"key": "start_date",
+									"value": "2023-06-01T00:00:00Z",
+									"description": "Filter by start date (ISO format)"
+								},
+								{
+									"key": "end_date",
+									"value": "2023-06-30T23:59:59Z",
+									"description": "Filter by end date (ISO format)"
+								}
+							]
+						},
+						"description": "Get usage statistics for tools"
+					},
+					"response": []
+				},
+				{
+					"name": "System Health",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Check the health status of the system"
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{accessToken}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"if (pm.response.code === 200 && pm.response.json().access_token) {",
+					"    pm.environment.set(\"accessToken\", pm.response.json().access_token);",
+					"}"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8000/api/v1",
+			"type": "string"
+		}
+	]
+} 

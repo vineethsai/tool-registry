@@ -33,6 +33,10 @@ RUN chown -R appuser:appuser /app
 # Create data directory for SQLite
 RUN mkdir -p /app/data && chown -R appuser:appuser /app/data
 
+# Ensure Postman collection files have correct permissions
+RUN mkdir -p /app/postman && \
+    chown -R appuser:appuser /app/postman
+
 # Switch to non-root user
 USER appuser
 
