@@ -12,7 +12,9 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
     
     # Database
-    database_url: str = "sqlite:///./tool_registry.db"
+    database_url: str = Field(
+        default_factory=lambda: os.getenv("DATABASE_URL", "sqlite:///./tool_registry.db")
+    )
     
     # HashiCorp Vault settings
     vault_url: Optional[str] = None

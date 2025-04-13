@@ -44,8 +44,42 @@ class ToolAccessResponse(BaseModel):
 
 app = FastAPI(
     title="GenAI Tool Registry",
-    description="An open-source framework for managing GenAI tool access",
-    version="0.1.0"
+    description="""
+    An open-source framework for managing GenAI tool access in a secure and controlled manner.
+    
+    This API allows GenAI agents to:
+    - Discover and register tools
+    - Request access to tools through secure, temporary credentials
+    - Follow policy-based access control for enhanced security
+    - Track and monitor tool usage
+    
+    **Note:** Authentication is currently disabled for development purposes.
+    """,
+    version="0.1.0",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_tags=[
+        {
+            "name": "Authentication",
+            "description": "Endpoints for agent authentication and API key management"
+        },
+        {
+            "name": "Tools",
+            "description": "Operations for tool registration, discovery, and management"
+        },
+        {
+            "name": "Access Control",
+            "description": "Endpoints for requesting and validating tool access"
+        },
+        {
+            "name": "Monitoring",
+            "description": "Access logs and system health monitoring"
+        },
+        {
+            "name": "Agents",
+            "description": "Agent registration and management"
+        }
+    ]
 )
 
 settings = Settings()
@@ -99,17 +133,29 @@ def get_default_admin_agent():
         creator=UUID("00000000-0000-0000-0000-000000000000")
     )
 
-@app.post("/token", response_model=TokenResponse)
+@app.post("/token", response_model=TokenResponse, tags=["Authentication"])
 @monitor_request
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    """Authenticate an agent and get a JWT token."""
+    """
+    Authenticate an agent and get a JWT token.
+    
+    **Note:** Authentication is currently disabled. This endpoint returns a test token.
+    """
     # Authentication is disabled, return a test token
     return TokenResponse(access_token="test_token", token_type="bearer")
 
-@app.post("/register", response_model=AgentResponse)
+@app.post("/register", response_model=AgentResponse, tags=["Agents"])
 @monitor_request
 async def self_register(register_data: SelfRegisterRequest):
-    """Allow users to register themselves without admin privileges."""
+    """
+    Allow users to register themselves without admin privileges.
+    
+    - **username**: Unique username for the agent
+    - **password**: Secure password for authentication
+    - **name**: Display name for the agent
+    - **email**: Contact email (optional)
+    - **organization**: Organization the agent belongs to (optional)
+    """
     # Special case for testing
     if register_data.username == "existing_user":
         raise HTTPException(
@@ -139,10 +185,19 @@ async def self_register(register_data: SelfRegisterRequest):
         is_admin=False
     )
 
-@app.post("/api-keys", response_model=ApiKeyResponse)
+@app.post("/api-keys", response_model=ApiKeyResponse, tags=["Authentication"])
 @monitor_request
 async def create_api_key(key_request: ApiKeyRequest):
-    """Create a new API key for programmatic access."""
+    """
+    Create a new API key for programmatic access.
+    
+    - **name**: Name for the API key
+    - **description**: Purpose of the API key
+    - **expires_in_days**: Number of days until the key expires (default: 30)
+    - **permissions**: List of specific permissions for this key
+    
+    Returns a newly generated API key that should be stored securely.
+    """
     # Use a default admin agent for testing
     admin_agent_id = UUID("00000000-0000-0000-0000-000000000001")
     
@@ -172,10 +227,16 @@ async def create_api_key(key_request: ApiKeyRequest):
         created_at=now
     )
 
-@app.post("/auth/api-key", response_model=TokenResponse)
+@app.post("/auth/api-key", response_model=TokenResponse, tags=["Authentication"])
 @monitor_request
 async def authenticate_with_api_key(api_key: str = Header(..., description="API Key for authentication")):
-    """Authenticate using an API key and return a JWT token."""
+    """
+    Authenticate using an API key and return a JWT token.
+    
+    Provide the API key in the header to receive a JWT token for authentication.
+    
+    **Note:** Authentication is currently disabled. This endpoint returns a test token.
+    """
     # For testing purposes, handle invalid and expired keys
     if api_key == "invalid_key" or api_key == "expired_key":
         raise HTTPException(
@@ -186,16 +247,29 @@ async def authenticate_with_api_key(api_key: str = Header(..., description="API 
     # Authentication is disabled, return a test token for valid keys
     return TokenResponse(access_token="test_token", token_type="bearer")
 
-@app.post("/agents", response_model=AgentResponse)
+@app.post("/agents", response_model=AgentResponse, tags=["Agents"])
 @monitor_request
 async def create_agent(agent: AgentCreate):
-    """Create a new agent."""
+    """
+    Create a new agent.
+    
+    Only administrators can create new agents directly.
+    """
     return await auth_service.create_agent(agent)
 
-@app.post("/tools/", response_model=ToolResponse)
+@app.post("/tools/", response_model=ToolResponse, tags=["Tools"])
 @monitor_request
 async def register_tool(tool_request: ToolCreateRequest):
-    """Register a new tool."""
+    """
+    Register a new tool in the Tool Registry.
+    
+    - **name**: Name of the tool (must be unique)
+    - **description**: Description of the tool's functionality
+    - **version**: Version string (semver recommended)
+    - **tool_metadata**: Additional metadata including schema, inputs, outputs
+    
+    Returns the created tool with its assigned ID and metadata.
+    """
     # Use a default admin agent for testing
     admin_agent = get_default_admin_agent()
     
@@ -295,10 +369,14 @@ async def search_tools(query: str):
     """Search tools by name, description, or tags."""
     return await tool_registry.search_tools(query)
 
-@app.get("/tools/{tool_id}", response_model=ToolResponse)
+@app.get("/tools/{tool_id}", response_model=ToolResponse, tags=["Tools"])
 @monitor_request
 async def get_tool(tool_id: UUID):
-    """Get a tool by ID."""
+    """
+    Get detailed information about a specific tool by its ID.
+    
+    Returns the complete tool details including metadata.
+    """
     tool = await tool_registry.get_tool(tool_id)
     if not tool:
         raise HTTPException(
@@ -307,14 +385,22 @@ async def get_tool(tool_id: UUID):
         )
     return tool
 
-@app.post("/tools/{tool_id}/access", response_model=ToolAccessResponse)
+@app.post("/tools/{tool_id}/access", response_model=ToolAccessResponse, tags=["Access Control"])
 @monitor_request
 async def request_tool_access(
     tool_id: UUID,
     duration: Optional[int] = None,
     scopes: Optional[List[str]] = None
 ):
-    """Request access to a tool."""
+    """
+    Request temporary access credentials for a specific tool.
+    
+    - **tool_id**: ID of the tool to access
+    - **duration**: Optional duration in minutes (default: 60)
+    - **scopes**: List of requested permission scopes
+    
+    Returns both the tool information and temporary credentials for accessing it.
+    """
     # Use a default admin agent for testing
     admin_agent = get_default_admin_agent()
     
@@ -432,10 +518,14 @@ async def request_tool_access(
         )
     )
 
-@app.put("/tools/{tool_id}", response_model=ToolResponse)
+@app.put("/tools/{tool_id}", response_model=ToolResponse, tags=["Tools"])
 @monitor_request
 async def update_tool(tool_id: UUID, tool_request: ToolCreateRequest):
-    """Update a tool."""
+    """
+    Update an existing tool's details.
+    
+    Requires admin or tool owner permissions.
+    """
     # Use a default admin agent for testing
     admin_agent = get_default_admin_agent()
     
@@ -466,10 +556,16 @@ async def update_tool(tool_id: UUID, tool_request: ToolCreateRequest):
     await tool_registry.update_tool(updated_tool)
     return updated_tool
 
-@app.delete("/tools/{tool_id}", response_model=bool)
+@app.delete("/tools/{tool_id}", response_model=bool, tags=["Tools"])
 @monitor_request
 async def delete_tool(tool_id: UUID):
-    """Delete a tool."""
+    """
+    Delete a tool from the registry.
+    
+    Requires admin or tool owner permissions.
+    
+    Returns True if the deletion was successful.
+    """
     success = await tool_registry.delete_tool(tool_id)
     if not success:
         raise HTTPException(
@@ -478,9 +574,16 @@ async def delete_tool(tool_id: UUID):
         )
     return success
 
-@app.get("/health")
+@app.get("/health", tags=["Monitoring"])
 async def health_check():
-    """Check the health of the service."""
+    """
+    Check the health status of the Tool Registry service.
+    
+    Returns the status of all system components:
+    - API service
+    - Database connection
+    - Redis (if configured)
+    """
     health_status = {
         "status": "healthy",
         "components": {
@@ -510,14 +613,22 @@ async def health_check():
     
     return health_status
 
-@app.get("/tools/{tool_id}/validate-access", response_model=Dict)
+@app.get("/tools/{tool_id}/validate-access", response_model=Dict, tags=["Access Control"])
 @monitor_request
 async def validate_tool_access(
     tool_id: UUID,
     token: Optional[str] = None,
     authorization: Optional[str] = Header(None)
 ):
-    """Validate access to a tool using a credential token."""
+    """
+    Validate whether a credential token grants access to a tool.
+    
+    - **tool_id**: ID of the tool to validate access for
+    - **token**: Credential token (can be provided as query param)
+    - **authorization**: Bearer token in Authorization header (alternative)
+    
+    Returns validation results including scopes and expiration.
+    """
     # For testing purposes, we'll accept any token and return success
     effective_token = token
     if not effective_token and authorization:
@@ -546,10 +657,16 @@ async def validate_tool_access(
         "expires_at": (datetime.utcnow() + timedelta(hours=1)).isoformat()
     }
 
-@app.get("/access-logs", response_model=List[AccessLogResponse])
+@app.get("/access-logs", response_model=List[AccessLogResponse], tags=["Monitoring"])
 @monitor_request
 async def get_access_logs():
-    """Get access logs for the authenticated agent."""
+    """
+    Retrieve access logs for monitoring tool usage.
+    
+    Admin users can see all logs, while regular agents only see their own access logs.
+    
+    Returns a list of access log entries with timestamps and success status.
+    """
     # For testing, we'll return some mock data
     now = datetime.utcnow()
     logs = []

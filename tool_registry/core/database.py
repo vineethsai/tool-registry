@@ -30,13 +30,20 @@ Base = declarative_base()
 class Database:
     """Database management class for the Tool Registry system."""
     
-    def __init__(self, database_url: str = "sqlite:///./test.db"):
+    def __init__(self, database_url: str = "sqlite:///./tool_registry.db"):
         """Initialize the database with the given URL."""
         self.database_url = database_url
+        
+        # Set connection arguments based on database type
+        connect_args = {}
+        if database_url.startswith('sqlite'):
+            # SQLite-specific connection args
+            connect_args = {"check_same_thread": False}
+            
         self.engine = create_engine(
             database_url,
-            connect_args={"check_same_thread": False},
-            poolclass=StaticPool
+            connect_args=connect_args,
+            poolclass=StaticPool if database_url.startswith('sqlite') else None
         )
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         
