@@ -1,21 +1,17 @@
 # Installation Guide
 
-This guide provides detailed instructions for installing and configuring the GenAI Tool Registry.
+This guide will help you set up and run the GenAI Tool Registry on your local machine.
 
 ## Prerequisites
 
-Before you begin, ensure that your system meets the following requirements:
+Before installing the Tool Registry, make sure you have the following installed:
 
 - Python 3.9 or higher
-- pip package manager
-- Git (for cloning the repository)
-- PostgreSQL (optional, for production environments)
-- Redis (optional, for rate limiting)
-- HashiCorp Vault (optional, for secret management)
+- pip (Python package manager)
+- Git (optional, for cloning the repository)
+- A database (SQLite, PostgreSQL, or MySQL)
 
-## Basic Installation
-
-Follow these steps to install the GenAI Tool Registry:
+## Installation Steps
 
 ### 1. Clone the Repository
 
@@ -26,171 +22,159 @@ cd tool-registry
 
 ### 2. Create a Virtual Environment
 
-It's recommended to use a virtual environment to isolate dependencies:
-
 ```bash
-# Create a virtual environment
 python -m venv venv
-
-# Activate the virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
+source venv/bin/activate  # On Windows, use: venv\Scripts\activate
 ```
 
-### 3. Install Required Dependencies
+### 3. Install Dependencies
 
 ```bash
-# Install runtime dependencies
-pip install -r requirements.txt
-
-# For development and testing
-pip install -r requirements-test.txt
+pip install -e ".[dev]"
 ```
 
-### 4. Install the Package (Development Mode)
+This will install the package in development mode with all the necessary dependencies.
+
+### 4. Configure the Database
+
+By default, the Tool Registry uses SQLite, which doesn't require additional setup. For production use, it's recommended to use PostgreSQL or MySQL.
+
+Create a `.env` file in the root directory with the following content:
 
 ```bash
-pip install -e .
+# For SQLite (default)
+DATABASE_URL=sqlite:///tool_registry.db
+
+# For PostgreSQL
+# DATABASE_URL=postgresql://username:password@localhost/tool_registry
+
+# For MySQL
+# DATABASE_URL=mysql://username:password@localhost/tool_registry
+
+# Security settings
+SECRET_KEY=your-secret-key-here
+DEBUG=false
+TEST_MODE=false
 ```
 
-## Configuration
-
-The GenAI Tool Registry uses environment variables for configuration. You can set these in a `.env` file in the project root directory.
-
-### Basic Configuration
-
-Create a `.env` file with the following settings:
-
-```
-# Database Configuration
-DATABASE_URL=sqlite:///./tool_registry.db
-
-# JWT Configuration
-JWT_SECRET_KEY=your-secret-key-here
-JWT_ALGORITHM=HS256
-JWT_EXPIRATION_MINUTES=30
-
-# Logging
-LOG_LEVEL=INFO
-```
-
-### Advanced Configuration
-
-For production environments, consider the following additional settings:
-
-```
-# Database (PostgreSQL recommended for production)
-DATABASE_URL=postgresql://username:password@localhost:5432/tool_registry
-
-# Redis for rate limiting
-REDIS_URL=redis://localhost:6379/0
-RATE_LIMIT=100
-RATE_LIMIT_WINDOW=60
-
-# HashiCorp Vault for secret management
-VAULT_URL=http://localhost:8200
-VAULT_TOKEN=your-vault-token
-VAULT_MOUNT_POINT=secret
-```
-
-## Database Setup
-
-### SQLite (Development)
-
-SQLite is used by default for development and requires no additional setup.
-
-### PostgreSQL (Production)
-
-For production environments, PostgreSQL is recommended:
-
-1. Install PostgreSQL on your server
-2. Create a database and user:
-
-```sql
-CREATE DATABASE tool_registry;
-CREATE USER tool_registry_user WITH PASSWORD 'password';
-GRANT ALL PRIVILEGES ON DATABASE tool_registry TO tool_registry_user;
-```
-
-3. Update your `.env` file with the PostgreSQL connection string:
-
-```
-DATABASE_URL=postgresql://tool_registry_user:password@localhost:5432/tool_registry
-```
-
-## HashiCorp Vault Setup (Optional)
-
-If you want to use HashiCorp Vault for secret management:
-
-1. Install and start Vault
-2. Create a token for the Tool Registry
-3. Enable the KV secrets engine:
+### 5. Run Database Migrations
 
 ```bash
-vault secrets enable -path=secret kv-v2
+alembic upgrade head
 ```
 
-4. Store your secrets:
+This will create all the necessary database tables.
+
+### 6. Start the Server
 
 ```bash
-vault kv put secret/tool-registry/jwt secret_key=your-secret-key
+python -m tool_registry.main
 ```
 
-5. Update your `.env` file with Vault settings:
+The API server will start running on `http://localhost:8000`.
 
-```
-VAULT_URL=http://localhost:8200
-VAULT_TOKEN=your-vault-token
-VAULT_MOUNT_POINT=secret
-```
+## Verifying the Installation
 
-## Verifying Installation
+Visit `http://localhost:8000/docs` in your browser to see the FastAPI automatic documentation. This will show all available endpoints and allow you to test them.
 
-To verify that your installation is working correctly:
+## Running Tests
 
-1. Start the application:
+To run the tests:
 
 ```bash
-uvicorn tool_registry.api.app:app --reload
+python -m pytest
 ```
 
-2. Open a web browser and navigate to `http://localhost:8000/docs` to see the API documentation.
-
-3. Run the tests to ensure everything is working:
+For tests with coverage:
 
 ```bash
-pytest
+python -m pytest --cov=tool_registry
 ```
 
-## Docker Installation (Optional)
+## Docker Installation (Alternative)
 
-For containerized deployment, you can use Docker:
+If you prefer using Docker, follow these steps:
+
+### 1. Build the Docker Image
 
 ```bash
-# Build the Docker image
 docker build -t tool-registry .
-
-# Run the container
-docker run -p 8000:8000 -d --name tool-registry tool-registry
 ```
 
-A `docker-compose.yml` file is also provided for setting up the complete environment including PostgreSQL and Redis.
+### 2. Run the Docker Container
+
+```bash
+docker run -p 8000:8000 -e DATABASE_URL=sqlite:///tool_registry.db -e SECRET_KEY=your-secret-key tool-registry
+```
+
+## Production Deployment
+
+For production deployment, consider the following:
+
+1. Use a production-grade database like PostgreSQL
+2. Set up a reverse proxy (Nginx or Apache)
+3. Configure HTTPS
+4. Use environment variables for configuration
+5. Consider using Docker Compose for orchestration
+
+Example Docker Compose configuration:
+
+```yaml
+version: '3'
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@db:5432/tool_registry
+      - SECRET_KEY=${SECRET_KEY}
+      - DEBUG=false
+    depends_on:
+      - db
+    
+  db:
+    image: postgres:14
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=tool_registry
+
+volumes:
+  postgres_data:
+```
 
 ## Troubleshooting
 
-If you encounter any issues during installation:
+### Common Issues
 
-1. Check that your Python version is 3.9 or higher
-2. Ensure that all required dependencies are installed
-3. Verify that your database connection string is correct
-4. Check the logs for any error messages
+1. **Database connection errors**: 
+   - Check that your DATABASE_URL is correct
+   - Ensure the database server is running
+   - Verify that the user has appropriate permissions
 
-Common issues:
+2. **Import errors**: 
+   - Make sure you've installed the package with `pip install -e .`
+   - Check for missing dependencies
 
-- **Database connection errors**: Check that your database server is running and accessible
-- **Import errors**: Ensure that all dependencies are installed and the virtual environment is activated
-- **Permission issues**: Check file and directory permissions for the application and database
+3. **Migration errors**:
+   - If you get errors during migration, try deleting the SQLite database file (if using SQLite) and rerunning the migrations
 
-For additional help, refer to the project's GitHub Issues page or contact the maintainers. 
+### Getting Help
+
+If you encounter issues not covered in this guide:
+
+1. Check the [FAQs](faq.md)
+2. Search for similar issues in the GitHub repository
+3. Create a new issue with details about the problem
+
+## Next Steps
+
+Once you have the Tool Registry up and running, check out:
+
+- [Developer Guide](developer_guide.md) for extending the system
+- [API Reference](api_reference.md) for using the API
+- [Schema Documentation](schema.md) for understanding the data model 
