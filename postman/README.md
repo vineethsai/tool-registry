@@ -20,6 +20,8 @@ The collection includes the following API endpoint groups:
 8. **Test Data Generation** - Tools for generating test data in bulk for comprehensive testing
 9. **Acceptance Test Scenarios** - End-to-end test workflows covering core business functionality
 10. **Security Testing** - Security and penetration testing scenarios
+11. **CRUD Operations Testing** - Comprehensive tests for all Create, Read, Update, Delete operations
+12. **Cross-Entity Testing** - Tests that verify interactions between different entity types
 
 ## Setup Instructions
 
@@ -82,6 +84,39 @@ The collection includes a suite of security tests to identify potential vulnerab
 3. **Data Validation Tests** - Invalid input formats and excessive payloads
 4. **Rate Limiting Tests** - API flood protection checks
 
+### CRUD Operations Testing
+
+The collection provides comprehensive tests for Create, Read, Update, and Delete operations:
+
+1. **Tool CRUD Tests** - Complete lifecycle testing for tool entities:
+   - Create Tool: Creates a new tool with unique name and validates the response
+   - Read Tool: Retrieves the created tool and verifies its details
+   - Update Tool: Modifies the tool's description and version, then validates the changes
+   - Delete Tool: Removes the tool and verifies it's no longer accessible
+
+2. **Agent CRUD Tests** - Testing the complete lifecycle of agent entities:
+   - Create Agent: Creates a new agent with unique name and validates the response
+   - Read Agent: Retrieves the created agent and verifies its details
+   - Update Agent (implicitly tested in Acceptance tests)
+   - Delete Agent (implicitly tested in other workflows)
+
+### Cross-Entity Testing
+
+The collection includes tests that verify the relationships and interactions between different entity types:
+
+1. **Tool-Agent Relationship** - Tests how entities interact with each other:
+   - Setup Test Tool: Creates a tool specifically for cross-entity testing
+   - Setup Test Agent: Creates an agent to interact with the test tool
+   - Create Policy: Creates a policy linking the tool and specifying access rules
+   - Test Access Request: Tests requesting access between the agent and tool via the policy
+   - Test Credential Creation: Creates credentials for the agent to access the tool
+   - Verify Cross-Entity References: Validates that all entity relationships are maintained correctly
+
+Each cross-entity test includes:
+- Creation of related entities in the correct sequence
+- Validation of relationships between entities
+- Testing the complete flow from tool/agent creation to access and credential issuance
+
 ## Running Test Suites
 
 To run comprehensive test suites:
@@ -89,7 +124,9 @@ To run comprehensive test suites:
 1. Use the Postman Collection Runner to execute test folders
 2. For data generation, set the desired quantity in the "Generate Multiple Test Entities" request
 3. For security testing, review the test results to identify potential vulnerabilities
-4. Use the environment variables panel to monitor stored test entities
+4. For CRUD testing, execute the operations in sequence to test the full lifecycle
+5. For cross-entity testing, run all tests in the folder to verify entity relationships
+6. Use the environment variables panel to monitor stored test entities
 
 ## Base URL Configuration
 
