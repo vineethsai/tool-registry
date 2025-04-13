@@ -1,0 +1,12 @@
+fastapi
+uvicorn
+pydantic
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+redis
+hvac
+prometheus-client
+psycopg2-binary
+sqlalchemy
+python-dotenv
