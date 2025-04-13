@@ -1,12 +1,13 @@
-from fastapi import FastAPI, Depends, HTTPException, status, Request
+from fastapi import FastAPI, Depends, HTTPException, status, Request, Header
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from typing import List, Optional
 from uuid import UUID, uuid4
-from datetime import timedelta
+from datetime import timedelta, datetime
 from redis import Redis
 import logging
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+import jwt
 
 from ..core.registry import ToolRegistry
 from ..core.auth import AuthService, AgentAuth, JWTToken
@@ -16,7 +17,10 @@ from ..core.config import Settings, SecretManager
 from ..core.monitoring import Monitoring, monitor_request
 from ..core.rate_limit import RateLimiter, rate_limit_middleware
 from ..auth import get_current_agent
-from ..auth.models import AgentCreate, AgentResponse, TokenResponse
+from ..auth.models import (
+    AgentCreate, AgentResponse, TokenResponse,
+    SelfRegisterRequest, ApiKeyRequest, ApiKeyResponse
+)
 from ..models import Tool, Agent, Policy, Credential, AccessLog, ToolMetadata
 from ..schemas import (
     ToolCreate, ToolResponse,
@@ -89,6 +93,68 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             headers={"WWW-Authenticate": "Bearer"},
         )
     return TokenResponse(access_token=token, token_type="bearer")
+
+@app.post("/register", response_model=AgentResponse)
+@monitor_request
+async def self_register(register_data: SelfRegisterRequest):
+    """Allow users to register themselves without admin privileges."""
+    # Register the new agent
+    agent = await auth_service.register_agent(register_data, register_data.password)
+    if not agent:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Username already exists"
+        )
+    
+    # Return the agent response
+    return AgentResponse(
+        id=agent.agent_id,
+        name=agent.name,
+        roles=agent.roles,
+        permissions=agent.permissions,
+        created_at=agent.created_at,
+        updated_at=agent.created_at
+    )
+
+@app.post("/api-keys", response_model=ApiKeyResponse)
+@monitor_request
+async def create_api_key(key_request: ApiKeyRequest, current_agent: Agent = Depends(get_current_agent)):
+    """Create a new API key for programmatic access."""
+    api_key = await auth_service.create_api_key(current_agent.agent_id, key_request)
+    if not api_key:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed to create API key"
+        )
+    
+    return ApiKeyResponse(
+        key_id=api_key.key_id,
+        api_key=api_key.api_key,
+        name=api_key.name,
+        expires_at=api_key.expires_at or datetime.utcnow() + timedelta(days=365),
+        created_at=api_key.created_at
+    )
+
+@app.post("/auth/api-key", response_model=TokenResponse)
+@monitor_request
+async def authenticate_with_api_key(api_key: str = Header(..., description="API Key for authentication")):
+    """Authenticate using an API key and return a JWT token."""
+    agent = await auth_service.authenticate_with_api_key(api_key)
+    if not agent:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid API key",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Create a JWT token for the authenticated agent
+    token_data = {
+        "sub": str(agent.agent_id),
+        "exp": datetime.utcnow() + timedelta(minutes=30)
+    }
+    
+    access_token = jwt.encode(token_data, auth_service.secret_key, algorithm=auth_service.algorithm)
+    return TokenResponse(access_token=access_token, token_type="bearer")
 
 @app.post("/agents", response_model=AgentResponse)
 @monitor_request

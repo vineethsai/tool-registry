@@ -30,6 +30,101 @@ To obtain a token, use the authentication endpoint:
 POST /auth/token
 ```
 
+Request body (form data):
+```
+username: your_username
+password: your_password
+```
+
+Response:
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
+```
+
+### Self-Registration
+
+Register as a new user without requiring admin privileges:
+
+```
+POST /register
+```
+
+Request body:
+```json
+{
+  "username": "newuser",
+  "email": "user@example.com",
+  "password": "secure_password",
+  "name": "New User",
+  "organization": "Example Org"
+}
+```
+
+Response:
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "name": "New User",
+  "roles": ["user"],
+  "permissions": ["access_tool:public"],
+  "created_at": "2023-01-15T14:30:00Z",
+  "updated_at": "2023-01-15T14:30:00Z"
+}
+```
+
+### Generate API Key
+
+Create an API key for programmatic access:
+
+```
+POST /api-keys
+```
+
+Request body:
+```json
+{
+  "name": "My Application Key",
+  "description": "API key for my application",
+  "expires_in_days": 90,
+  "permissions": ["access_tool:public"]
+}
+```
+
+Response:
+```json
+{
+  "key_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "api_key": "tr_a1b2c3d4e5f6g7h8i9j0...",
+  "name": "My Application Key",
+  "expires_at": "2023-04-15T14:30:00Z",
+  "created_at": "2023-01-15T14:30:00Z"
+}
+```
+
+### Authenticate with API Key
+
+Obtain a JWT token using an API key:
+
+```
+POST /auth/api-key
+```
+
+Headers:
+```
+api-key: tr_a1b2c3d4e5f6g7h8i9j0...
+```
+
+Response:
+```json
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "token_type": "bearer"
+}
+```
+
 ## Response Format
 
 All responses follow a standard format:
