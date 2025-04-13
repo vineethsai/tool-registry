@@ -10,7 +10,7 @@ from sqlalchemy.pool import StaticPool
 from fastapi import Response, status
 
 from tool_registry.api.app import app, get_db, tool_registry, auth_service
-from tool_registry.core.registry import ToolMetadata
+from tool_registry.models.tool_metadata import ToolMetadata
 from tool_registry.core.database import Base
 from tool_registry.core.rate_limit import rate_limit_middleware
 from tool_registry.core.credentials import Credential
@@ -48,15 +48,33 @@ def test_db():
 @pytest.fixture(scope="function")
 def setup_auth_token_verification():
     # Mock the verify_token method in auth_service to return a fixed agent
-    with patch('tool_registry.api.app.auth_service.verify_token') as mock_verify_token:
-        mock_agent = MagicMock()
-        mock_agent.agent_id = uuid.UUID('00000000-0000-0000-0000-000000000030')
-        mock_agent.is_admin = True
-        mock_verify_token.return_value = mock_agent
+    with patch('tool_registry.auth.jwt.decode') as mock_jwt_decode:
+        # Return a fixed agent ID when decoding JWT
+        mock_jwt_decode.return_value = {"sub": "00000000-0000-0000-0000-000000000030"}
         
-        # Also mock the is_admin method to return True directly (it's not an async method in auth.py)
-        with patch('tool_registry.api.app.auth_service.is_admin', return_value=True):
-            yield mock_verify_token
+        with patch('tool_registry.auth.get_current_agent') as mock_get_current_agent:
+            mock_agent = MagicMock()
+            mock_agent.agent_id = uuid.UUID('00000000-0000-0000-0000-000000000030')
+            mock_agent.name = "Test Agent"
+            mock_agent.description = "Test agent for integration testing"
+            mock_agent.roles = ["admin", "tool_publisher", "policy_admin"]
+            mock_agent.is_admin = True
+            mock_get_current_agent.return_value = mock_agent
+            
+            # Add the agent to the mock agent database
+            with patch('tool_registry.auth.agents_db') as mock_agents_db:
+                mock_agents_db.__getitem__.side_effect = lambda key: mock_agent if key == "00000000-0000-0000-0000-000000000030" else None
+                mock_agents_db.get.side_effect = lambda key, default=None: mock_agent if key == "00000000-0000-0000-0000-000000000030" else default
+                
+                # Also mock the is_admin method to return True
+                with patch('tool_registry.api.app.auth_service.is_admin', return_value=True):
+                    # Mock the authenticate_agent method to ensure proper token handling
+                    with patch('tool_registry.api.app.auth_service.authenticate_agent') as mock_auth:
+                        mock_auth.return_value = "test-auth-token"
+                        # Mock the verify_token method in auth_service
+                        with patch('tool_registry.api.app.auth_service.verify_token') as mock_verify_token:
+                            mock_verify_token.return_value = mock_agent
+                            yield mock_verify_token
 
 @pytest.fixture(scope="function")
 def auth_token():
@@ -69,20 +87,34 @@ def client(test_db, setup_auth_token_verification):
     
     # Patch the tool registry methods to avoid actual database operations
     sample_tool_id = str(uuid.uuid4())
+    owner_id = str(uuid.uuid4())
+    metadata_id = str(uuid.uuid4())
+    metadata_created_at = datetime.now().isoformat()
+    metadata_updated_at = datetime.now().isoformat()
     sample_tool = {
         "tool_id": sample_tool_id,
         "name": "Sample Tool",
         "description": "A sample tool for testing",
-        "endpoint": "/api/tools/sample",
-        "auth_required": True,
+        "api_endpoint": "/api/tools/sample",
+        "auth_method": "API_KEY",
+        "auth_config": {},
+        "params": {},
         "version": "1.0.0",
-        "tool_metadata_rel": {
+        "tags": ["test", "sample"],
+        "owner_id": owner_id,
+        "metadata": {
+            "metadata_id": metadata_id,
+            "tool_id": sample_tool_id,
             "provider": "test-provider",
             "version": "1.0.0",
             "tags": ["test", "sample"],
             "schema_version": "1.0",
+            "schema_type": "openapi",
+            "schema_data": {},
             "inputs": {"text": {"type": "string"}},
-            "outputs": {"result": {"type": "string"}}
+            "outputs": {"result": {"type": "string"}},
+            "created_at": metadata_created_at,
+            "updated_at": metadata_updated_at
         },
         "created_at": datetime.now().isoformat(),
         "updated_at": datetime.now().isoformat()
@@ -121,20 +153,35 @@ def client(test_db, setup_auth_token_verification):
 
 @pytest.fixture(scope="function")
 def sample_tool(client):
+    tool_id = str(uuid.uuid4())
+    owner_id = str(uuid.uuid4())
+    metadata_id = str(uuid.uuid4())
+    metadata_created_at = datetime.now().isoformat()
+    metadata_updated_at = datetime.now().isoformat()
     return {
-        "tool_id": str(uuid.uuid4()),
+        "tool_id": tool_id,
         "name": "Sample Tool",
         "description": "A sample tool for testing",
-        "endpoint": "/api/tools/sample",
-        "auth_required": True,
+        "api_endpoint": "/api/tools/sample",
+        "auth_method": "API_KEY",
+        "auth_config": {},
+        "params": {},
         "version": "1.0.0",
-        "tool_metadata_rel": {
+        "tags": ["test", "sample"],
+        "owner_id": owner_id,
+        "metadata": {
+            "metadata_id": metadata_id,
+            "tool_id": tool_id,
             "provider": "test-provider",
             "version": "1.0.0",
             "tags": ["test", "sample"],
             "schema_version": "1.0",
+            "schema_type": "openapi",
+            "schema_data": {},
             "inputs": {"text": {"type": "string"}},
-            "outputs": {"result": {"type": "string"}}
+            "outputs": {"result": {"type": "string"}},
+            "created_at": metadata_created_at,
+            "updated_at": metadata_updated_at
         },
         "created_at": datetime.now().isoformat(),
         "updated_at": datetime.now().isoformat()

@@ -2,6 +2,71 @@
 
 An open-source framework for managing GenAI tool access with secure authentication, authorization, and just-in-time credential vending.
 
+## Key Security Features
+
+- **Role-Based Access Control**: Tools are only accessible by authorized agents based on their roles and permissions
+- **Just-in-Time Credentials**: Temporary, scoped credentials for specific tasks to enhance security
+- **Policy Engine**: Robust policy engine to enforce access rules based on multiple conditions
+- **Scoped Access**: Fine-grained permission control with specific scopes (read, write, etc.)
+- **Comprehensive Logging**: Audit trail of all access attempts and credential usage
+- **Token-Based Authentication**: Secure JWT tokens for both agent authentication and tool credentials
+
+## Architecture
+
+The GenAI Tool Registry is built using a modular architecture:
+
+### Core Components
+
+1. **Registry Module**: 
+   - Manages tool registration, discovery, and metadata
+   - Handles versioning and tool lifecycle
+
+2. **Authentication Module**:
+   - Agent authentication and identity management
+   - Token generation and validation
+   - Role assignment and management
+
+3. **Authorization Module**:
+   - Policy-based access control
+   - Context-aware authorization decisions
+   - Custom rule evaluation
+
+4. **Credential Vendor**:
+   - Just-in-time credential generation
+   - Scoped access tokens
+   - Credential lifecycle management
+
+5. **Monitoring & Logging**:
+   - Access attempt logging
+   - Credential usage tracking
+   - Audit trail for compliance
+
+## Security Flow
+
+1. **Agent Authentication**:
+   - Agent provides credentials
+   - System verifies identity and issues a session token
+   - Agent roles and permissions are loaded
+
+2. **Tool Discovery**:
+   - Agent browses or searches for available tools
+   - Only tools that the agent potentially has access to are displayed
+
+3. **Access Request**:
+   - Agent requests access to a specific tool with desired scopes
+   - Policy engine evaluates request against defined policies
+   - Context (time, location, previous usage) is considered
+
+4. **Credential Issuance**:
+   - If access is granted, a temporary credential is issued
+   - Credential has limited scope and expiration time
+   - Usage is tracked for audit purposes
+
+5. **Tool Access**:
+   - Agent uses the temporary credential to access the tool
+   - Tool validates the credential on each request
+   - Actions are limited to granted scopes
+
 ## Features
 
 - **Secure Tool Registry**: Register, discover, and manage tools with detailed metadata
@@ -22,7 +87,7 @@ An open-source framework for managing GenAI tool access with secure authenticati
 - Python 3.9+
 - PostgreSQL (optional, SQLite can be used for development)
 - Redis (optional, for rate limiting)
-- HashiCorp Vault (optional, for secret management)
+- HashiCorp Vault (optional, for enhanced secret management)
 
 ### Standard Installation
 
@@ -59,9 +124,9 @@ Create a `.env` file in the root directory with the following variables:
 ```
 DATABASE_URL=sqlite:///./tool_registry.db  # or postgresql://user:password@localhost/tool_registry
 REDIS_URL=redis://localhost:6379/0  # optional
-JWT_SECRET_KEY=your-secret-key
-VAULT_URL=http://localhost:8200  # optional
-VAULT_TOKEN=your-vault-token  # optional
+JWT_SECRET_KEY=your-secret-key-here
+CREDENTIAL_JWT_SECRET=your-credential-secret-key-here
+ACCESS_TOKEN_EXPIRE_MINUTES=30
 LOG_LEVEL=INFO
 ```
 
@@ -95,123 +160,9 @@ pytest tests/test_registry.py
 pytest tests/test_integration.py
 ```
 
-## Architecture
-
-The GenAI Tool Registry is built using a modular architecture:
-
-### Core Components
-
-1. **Registry Module** (`tool_registry.core.registry`):
-   - Manages tool registration, listing, searching, and retrieval
-   - Handles tool metadata and versioning
-
-2. **Authentication Module** (`tool_registry.core.auth`):
-   - JWT-based authentication
-   - Agent management (users, services, etc.)
-   - Role-based access control
-
-3. **Credential Vending** (`tool_registry.core.credentials`):
-   - Just-in-time credential generation
-   - Scoped access tokens
-   - Automatic credential expiration
-
-4. **Database Layer** (`tool_registry.core.database`):
-   - SQLAlchemy ORM
-   - Model definitions
-   - Database migrations
-
-5. **Configuration** (`tool_registry.core.config`):
-   - Environment-based configuration
-   - Integration with HashiCorp Vault for secrets
-
-6. **Monitoring** (`tool_registry.core.monitoring`):
-   - Structured logging
-   - Prometheus metrics
-   - Request tracing
-
-7. **Rate Limiting** (`tool_registry.core.rate_limit`):
-   - Request rate limiting
-   - Redis-based counter implementation
-   - Configurable time windows and limits
-
-### API Layer
-
-The API is built with FastAPI and provides the following endpoints:
+## API Usage
 
 ### Authentication
-- `POST /token`: Get authentication token
-- `POST /agents`: Create a new agent
-
-### Tools
-- `POST /tools/`: Register a new tool
-- `GET /tools`: List all tools
-- `GET /tools/search`: Search tools
-- `GET /tools/{tool_id}`: Get tool details
-- `PUT /tools/{tool_id}`: Update a tool
-- `DELETE /tools/{tool_id}`: Delete a tool
-- `POST /tools/{tool_id}/access`: Request tool access
-
-## Tool Model
-
-A tool in the registry is defined by the following properties:
-
-```python
-{
-    "tool_id": "unique-uuid",
-    "name": "Example Tool",
-    "description": "Tool description",
-    "version": "1.0.0",
-    "tool_metadata_rel": {
-        "schema_version": "1.0",
-        "inputs": {
-            "text": {"type": "string"}
-        },
-        "outputs": {
-            "result": {"type": "string"}
-        }
-    },
-    "endpoint": "/api/tools/example",
-    "auth_required": true,
-    "auth_type": "api_key",  # optional
-    "auth_config": {},  # optional
-    "rate_limit": 100,  # optional
-    "cost_per_call": 0.01  # optional
-}
-```
-
-## Usage Examples
-
-### Registering a Tool
-
-```python
-from tool_registry.core.registry import Tool, ToolMetadata
-from tool_registry.core.database import Database
-
-# Initialize database
-db = Database("sqlite:///./tool_registry.db")
-db.init_db()
-
-# Create a tool with metadata
-tool = Tool(
-    name="Example Tool",
-    description="An example tool for demonstration",
-    version="1.0.0",
-    tool_metadata_rel=ToolMetadata(
-        schema_version="1.0",
-        inputs={"text": {"type": "string"}},
-        outputs={"result": {"type": "string"}}
-    ),
-    endpoint="https://api.example.com/tool",
-    auth_required=True
-)
-
-# Register the tool
-registry = ToolRegistry(db)
-tool_id = await registry.register_tool(tool)
-print(f"Tool registered with ID: {tool_id}")
-```
-
-### Using the API
 
 ```python
 import requests
@@ -219,70 +170,120 @@ import requests
 # Get an authentication token
 response = requests.post(
     "http://localhost:8000/token",
-    data={"username": "admin", "password": "password"}
+    data={"username": "agent1", "password": "password"}
 )
 token = response.json()["access_token"]
+headers = {"Authorization": f"Bearer {token}"}
+```
 
-# Register a tool
+### Tool Registration
+
+```python
+# Register a new tool
 tool_data = {
-    "name": "Test Tool",
-    "description": "A test tool",
-    "version": "1.0.0",
-    "tool_metadata": {
-        "schema_version": "1.0",
-        "inputs": {"text": {"type": "string"}},
-        "outputs": {"result": {"type": "string"}}
-    }
+    "name": "Text Translation API",
+    "description": "Translates text between languages",
+    "api_endpoint": "https://api.example.com/translate",
+    "auth_method": "API_KEY",
+    "auth_config": {
+        "header_name": "X-API-Key"
+    },
+    "params": {
+        "source_language": {"type": "string", "required": True},
+        "target_language": {"type": "string", "required": True},
+        "text": {"type": "string", "required": True}
+    },
+    "tags": ["translation", "text", "language"],
+    "version": "1.0.0"
 }
 
 response = requests.post(
-    "http://localhost:8000/tools/",
+    "http://localhost:8000/tools",
     json=tool_data,
-    headers={"Authorization": f"Bearer {token}"}
+    headers=headers
 )
 tool = response.json()
-print(f"Tool registered: {tool['tool_id']}")
 ```
 
-## Security Considerations
+### Tool Access
 
-- All API endpoints require authentication
-- Credentials are short-lived and scoped to specific tools
-- Role-based access control
-- Permission-based authorization
-- Rate limiting support
-- Cost tracking per tool call
-- Secrets stored securely in HashiCorp Vault
-- HTTPS recommended for production deployments
+```python
+# Request access to a tool
+response = requests.post(
+    f"http://localhost:8000/tools/{tool['tool_id']}/access",
+    params={"scopes": ["read", "translate"]},
+    headers=headers
+)
+access_info = response.json()
+credential = access_info["credential"]
 
-## Extending the Framework
+# Use the credential to access the tool
+tool_response = requests.post(
+    tool["api_endpoint"],
+    headers={"Authorization": f"Bearer {credential['token']}"},
+    json={
+        "source_language": "en",
+        "target_language": "es",
+        "text": "Hello world"
+    }
+)
+```
 
-### Adding New Authentication Methods
-1. Create a new authentication class
-2. Implement the required methods
-3. Register with the AuthService
+## Policy Examples
 
-### Adding New Policy Types
-1. Create a new policy class
-2. Implement policy evaluation logic
-3. Register with the PolicyEngine
+### Role-Based Policy
 
-### Adding New Credential Types
-1. Create a new credential class
-2. Implement credential generation and validation
-3. Register with the CredentialVendor
+```python
+policy = {
+    "name": "Translator Access",
+    "description": "Allows translators to access translation tools",
+    "rules": {
+        "roles": ["translator", "admin"],
+        "allowed_scopes": ["read", "translate"],
+        "max_credential_lifetime": 3600  # 1 hour
+    }
+}
+```
+
+### Time-Based Policy
+
+```python
+policy = {
+    "name": "Business Hours Only",
+    "description": "Restricts access to business hours",
+    "rules": {
+        "time_restrictions": {
+            "allowed_days": [0, 1, 2, 3, 4],  # Monday to Friday
+            "allowed_hours": [(9, 17)]  # 9 AM to 5 PM
+        }
+    }
+}
+```
+
+### Resource Limit Policy
+
+```python
+policy = {
+    "name": "API Usage Limits",
+    "description": "Limits API usage to prevent abuse",
+    "rules": {
+        "resource_limits": {
+            "max_calls_per_minute": 100,
+            "max_cost_per_day": 10.0
+        }
+    }
+}
+```
 
 ## Contributing
 
-Contributions are welcome! Please follow these steps:
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
 3. Commit your changes (`git commit -m 'Add some amazing feature'`)
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
-
-Please make sure your code passes all tests and follows the project's coding style.
 
 ## License
 

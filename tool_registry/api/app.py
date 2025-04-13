@@ -6,23 +6,32 @@ from datetime import timedelta
 from redis import Redis
 import logging
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
-from ..core.registry import Tool, ToolMetadata, ToolRegistry
-from ..core.auth import AuthService, Agent, JWTToken
+from ..core.registry import ToolRegistry
+from ..core.auth import AuthService, AgentAuth, JWTToken
 from ..core.credentials import Credential, CredentialVendor
-from ..core.database import Database, Base
+from ..core.database import Base, SessionLocal, engine, get_db, Database
 from ..core.config import Settings, SecretManager
 from ..core.monitoring import Monitoring, monitor_request
 from ..core.rate_limit import RateLimiter, rate_limit_middleware
 from ..auth import get_current_agent
 from ..auth.models import AgentCreate, AgentResponse, TokenResponse
+from ..models import Tool, Agent, Policy, Credential, AccessLog, ToolMetadata
+from ..schemas import (
+    ToolCreate, ToolResponse,
+    AgentCreate, AgentResponse,
+    PolicyCreate, PolicyResponse,
+    CredentialCreate, CredentialResponse,
+    ToolMetadataCreate, ToolMetadataResponse
+)
 
 class ToolCreateRequest(BaseModel):
     """Request model for creating a new tool."""
     name: str
     description: str
     version: str
-    tool_metadata: ToolMetadata
+    tool_metadata: ToolMetadataCreate
 
 app = FastAPI(
     title="GenAI Tool Registry",
@@ -92,7 +101,7 @@ async def create_agent(agent: AgentCreate, token: str = Depends(oauth2_scheme)):
         )
     return await auth_service.create_agent(agent)
 
-@app.post("/tools/", response_model=Tool)
+@app.post("/tools/", response_model=ToolResponse)
 @monitor_request
 async def register_tool(tool_request: ToolCreateRequest, token: str = Depends(oauth2_scheme)):
     """Register a new tool."""
@@ -116,21 +125,21 @@ async def register_tool(tool_request: ToolCreateRequest, token: str = Depends(oa
     # Return the tool that was registered
     return tool
 
-@app.get("/tools", response_model=List[Tool])
+@app.get("/tools", response_model=List[ToolResponse])
 @monitor_request
 async def list_tools(token: str = Depends(oauth2_scheme)):
     """List all tools."""
     agent = await get_current_agent(token)
     return await tool_registry.list_tools()
 
-@app.get("/tools/search", response_model=List[Tool])
+@app.get("/tools/search", response_model=List[ToolResponse])
 @monitor_request
 async def search_tools(query: str, token: str = Depends(oauth2_scheme)):
     """Search tools by name, description, or tags."""
     agent = await get_current_agent(token)
     return await tool_registry.search_tools(query)
 
-@app.get("/tools/{tool_id}", response_model=Tool)
+@app.get("/tools/{tool_id}", response_model=ToolResponse)
 @monitor_request
 async def get_tool(tool_id: UUID, token: str = Depends(oauth2_scheme)):
     """Get a tool by ID."""
@@ -143,7 +152,7 @@ async def get_tool(tool_id: UUID, token: str = Depends(oauth2_scheme)):
         )
     return tool
 
-@app.post("/tools/{tool_id}/access", response_model=Credential)
+@app.post("/tools/{tool_id}/access", response_model=CredentialResponse)
 async def request_tool_access(
     tool_id: UUID,
     duration: Optional[int] = None,
@@ -169,7 +178,7 @@ async def request_tool_access(
         scopes=scopes
     )
 
-@app.put("/tools/{tool_id}", response_model=bool)
+@app.put("/tools/{tool_id}", response_model=ToolResponse)
 @monitor_request
 async def update_tool(tool_id: UUID, tool_request: ToolCreateRequest, token: str = Depends(oauth2_scheme)):
     """Update a tool."""
@@ -195,21 +204,11 @@ async def update_tool(tool_id: UUID, tool_request: ToolCreateRequest, token: str
         description=tool_request.description,
         version=tool_request.version,
         tool_metadata_rel=tool_request.tool_metadata,
-        endpoint=existing_tool.endpoint,
-        auth_required=existing_tool.auth_required,
-        auth_type=existing_tool.auth_type,
-        auth_config=existing_tool.auth_config,
-        rate_limit=existing_tool.rate_limit,
-        cost_per_call=existing_tool.cost_per_call
+        endpoint=f"/api/tools/{tool_request.name}",
+        auth_required=True
     )
-    
-    success = await tool_registry.update_tool(tool_id, updated_tool)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Tool not found"
-        )
-    return success
+    await tool_registry.update_tool(updated_tool)
+    return updated_tool
 
 @app.delete("/tools/{tool_id}", response_model=bool)
 @monitor_request

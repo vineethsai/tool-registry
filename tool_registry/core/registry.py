@@ -1,199 +1,189 @@
-from typing import Dict, List, Optional
-from uuid import UUID, uuid4
-from pydantic import BaseModel, Field
-from datetime import datetime
-from .database import Database, Tool as DBTool
+"""Core registry functionality for managing tools and their metadata."""
 
-class ToolMetadata(BaseModel):
-    """Metadata for a registered tool."""
-    schema_version: str = "1.0"
-    inputs: Dict[str, Dict[str, str]]
-    outputs: Dict[str, Dict[str, str]]
+from typing import Dict, List, Optional, Union, Any
+from uuid import UUID
+from pydantic import BaseModel
+from sqlalchemy.orm import Session
+from sqlalchemy import or_
+import uuid
 
-class Tool(BaseModel):
-    """A tool in the registry."""
-    tool_id: UUID
-    name: str
-    description: str
-    version: str
-    tool_metadata_rel: ToolMetadata
-    endpoint: str
-    auth_required: bool = False
-    auth_type: Optional[str] = None
-    auth_config: Optional[Dict] = None
-    rate_limit: Optional[int] = None
-    cost_per_call: Optional[float] = None
+from ..models.tool import Tool as DBTool
+from ..models.tool_metadata import ToolMetadata as DBToolMetadata
+from .database import Database
 
 class ToolRegistry:
-    """Core registry for managing tools."""
+    """Registry for managing tools and their metadata."""
     
-    def __init__(self, db: Database):
-        """Initialize the tool registry."""
-        self.db = db
-    
-    async def register_tool(self, tool: Tool) -> UUID:
+    def __init__(self, db: Union[Session, Database]):
+        """Initialize the tool registry with a database session."""
+        if isinstance(db, Database):
+            # Get a session from the Database object
+            self.db_instance = db
+            self.db = next(db.get_session())
+        else:
+            # Use the provided session directly
+            self.db_instance = None
+            self.db = db
+        self.tools = {}  # For backward compatibility
+        self._metadata: Dict[UUID, DBToolMetadata] = {}
+
+    async def register_tool(self, tool_data: Union[Dict[str, Any], DBTool]) -> Dict[str, Any]:
         """Register a new tool in the registry."""
-        session = next(self.db.get_session())
-        try:
-            # Check for existing tool with the same name
-            existing_tool = session.query(DBTool).filter(DBTool.name == tool.name).first()
-            if existing_tool:
-                raise ValueError(f"Tool with name {tool.name} already exists")
+        if isinstance(tool_data, DBTool):
+            # If we received a Tool object, extract the relevant fields
+            tool_dict = {
+                "name": tool_data.name,
+                "description": tool_data.description,
+                "api_endpoint": tool_data.api_endpoint,
+                "auth_method": tool_data.auth_method,
+                "auth_config": tool_data.auth_config,
+                "params": tool_data.params,
+                "version": tool_data.version,
+                "tags": tool_data.tags,
+                "owner_id": tool_data.owner_id,
+                "tool_id": tool_data.tool_id
+            }
+            # Use the existing tool_id if provided
+            tool_id = tool_data.tool_id
+        else:
+            # Using dictionary input
+            tool_dict = tool_data
+            tool_id = uuid.uuid4()
             
-            db_tool = DBTool(
-                tool_id=tool.tool_id,
-                name=tool.name,
-                description=tool.description,
-                version=tool.version,
-                endpoint=tool.endpoint,
-                auth_required=tool.auth_required,
-                auth_type=tool.auth_type,
-                rate_limit=tool.rate_limit,
-                cost_per_call=tool.cost_per_call
-            )
-            db_tool.tool_metadata_dict = tool.tool_metadata_rel.model_dump()
-            session.add(db_tool)
-            session.commit()
-            return db_tool.tool_id
-        finally:
-            session.close()
-    
-    async def get_tool(self, tool_id: UUID) -> Optional[Tool]:
-        """Get a tool by its ID."""
-        session = next(self.db.get_session())
-        try:
-            db_tool = session.query(DBTool).filter(DBTool.tool_id == tool_id).first()
-            if db_tool:
-                return Tool(
-                    tool_id=db_tool.tool_id,
-                    name=db_tool.name,
-                    description=db_tool.description,
-                    version=db_tool.version,
-                    tool_metadata_rel=ToolMetadata(**db_tool.tool_metadata_dict),
-                    endpoint=db_tool.endpoint,
-                    auth_required=db_tool.auth_required,
-                    auth_type=db_tool.auth_type,
-                    rate_limit=db_tool.rate_limit,
-                    cost_per_call=db_tool.cost_per_call
-                )
-            return None
-        finally:
-            session.close()
-    
-    async def get_tool_by_name(self, name: str) -> Optional[Tool]:
-        """Get a tool by its name."""
-        session = next(self.db.get_session())
-        try:
-            # Since name is now a direct field in the DBTool model
-            db_tool = session.query(DBTool).filter(DBTool.name == name).first()
+        # Check if tool with the same name exists
+        existing_tool = self.db.query(DBTool).filter(DBTool.name == tool_dict["name"]).first()
+        if existing_tool:
+            raise ValueError(f"Tool with name '{tool_dict['name']}' already exists")
+        
+        # Create tool in database
+        new_tool = DBTool(
+            tool_id=tool_id,
+            name=tool_dict["name"],
+            description=tool_dict.get("description", ""),
+            api_endpoint=tool_dict.get("api_endpoint", ""),
+            auth_method=tool_dict.get("auth_method", ""),
+            auth_config=tool_dict.get("auth_config", {}),
+            params=tool_dict.get("params", {}),
+            version=tool_dict.get("version", "1.0.0"),
+            tags=tool_dict.get("tags", []),
+            owner_id=tool_dict.get("owner_id"),
+        )
+        self.db.add(new_tool)
+        self.db.commit()
+        self.db.refresh(new_tool)
+        
+        # For backward compatibility
+        self.tools[tool_id] = tool_dict
+        
+        return tool_id
+
+    async def get_tool(self, tool_id: Union[str, UUID]) -> Optional[DBTool]:
+        """Get a tool by ID."""
+        if isinstance(tool_id, str):
+            tool_id = UUID(tool_id)
             
-            if db_tool:
-                return Tool(
-                    tool_id=db_tool.tool_id,
-                    name=db_tool.name,
-                    description=db_tool.description,
-                    version=db_tool.version,
-                    tool_metadata_rel=ToolMetadata(**db_tool.tool_metadata_dict),
-                    endpoint=db_tool.endpoint,
-                    auth_required=db_tool.auth_required,
-                    auth_type=db_tool.auth_type,
-                    rate_limit=db_tool.rate_limit,
-                    cost_per_call=db_tool.cost_per_call
-                )
-            return None
-        finally:
-            session.close()
-    
-    async def list_tools(self) -> List[Tool]:
+        tool = self.db.query(DBTool).filter(DBTool.tool_id == tool_id).first()
+        return tool
+
+    async def list_tools(self) -> List[DBTool]:
         """List all registered tools."""
-        session = next(self.db.get_session())
-        try:
-            db_tools = session.query(DBTool).all()
-            return [
-                Tool(
-                    tool_id=db_tool.tool_id,
-                    name=db_tool.name,
-                    description=db_tool.description,
-                    version=db_tool.version,
-                    tool_metadata_rel=ToolMetadata(**db_tool.tool_metadata_dict),
-                    endpoint=db_tool.endpoint,
-                    auth_required=db_tool.auth_required,
-                    auth_type=db_tool.auth_type,
-                    rate_limit=db_tool.rate_limit,
-                    cost_per_call=db_tool.cost_per_call
-                )
-                for db_tool in db_tools
-            ]
-        finally:
-            session.close()
-    
-    async def search_tools(self, query: str) -> List[Tool]:
-        """Search tools by name, description."""
-        session = next(self.db.get_session())
-        try:
-            # Search by name and description fields directly
-            db_tools = session.query(DBTool).filter(
-                (DBTool.name.ilike(f"%{query}%")) |
-                (DBTool.description.ilike(f"%{query}%"))
-            ).all()
-            
-            return [
-                Tool(
-                    tool_id=db_tool.tool_id,
-                    name=db_tool.name,
-                    description=db_tool.description,
-                    version=db_tool.version,
-                    tool_metadata_rel=ToolMetadata(**db_tool.tool_metadata_dict),
-                    endpoint=db_tool.endpoint,
-                    auth_required=db_tool.auth_required,
-                    auth_type=db_tool.auth_type,
-                    rate_limit=db_tool.rate_limit,
-                    cost_per_call=db_tool.cost_per_call
-                )
-                for db_tool in db_tools
-            ]
-        finally:
-            session.close()
-    
-    async def update_tool(self, tool_id: UUID, tool: Tool) -> bool:
-        """Update a tool in the registry."""
-        session = next(self.db.get_session())
-        try:
-            db_tool = session.query(DBTool).filter(DBTool.tool_id == tool_id).first()
-            if not db_tool:
-                return False
+        tools = self.db.query(DBTool).all()
+        return tools
 
-            # Update the name, description, and version
-            db_tool.name = tool.name
-            db_tool.description = tool.description
-            db_tool.version = tool.version
+    async def search_tools(self, query: str) -> List[DBTool]:
+        """
+        Search for tools by name, description, or tags.
+        
+        Args:
+            query: The search query to filter tools
             
-            # Update the tool_metadata_json field
-            db_tool.tool_metadata_dict = tool.tool_metadata_rel.model_dump()
-            
-            # Update other fields
-            db_tool.endpoint = tool.endpoint
-            db_tool.auth_required = tool.auth_required
-            db_tool.auth_type = tool.auth_type
-            db_tool.auth_config = None if tool.auth_config is None else str(tool.auth_config)
-            db_tool.rate_limit = tool.rate_limit
-            db_tool.cost_per_call = tool.cost_per_call
+        Returns:
+            List of tools matching the query
+        """
+        query = query.lower()
+        
+        # Perform SQL query to filter tools based on name and description
+        # For tags, we'll filter in Python since JSON searching in SQLite is limited
+        tools = self.db.query(DBTool).filter(
+            or_(
+                DBTool.name.ilike(f"%{query}%"),
+                DBTool.description.ilike(f"%{query}%")
+            )
+        ).all()
+        
+        # Filter by tags in Python
+        # Get all tools that weren't already matched
+        all_tools = self.db.query(DBTool).all()
+        matched_ids = {tool.tool_id for tool in tools}
+        
+        # Look for tag matches
+        for tool in all_tools:
+            if tool.tool_id in matched_ids:
+                continue
+                
+            # Check if any tag contains the query
+            if tool.tags and any(query in tag.lower() for tag in tool.tags):
+                tools.append(tool)
+        
+        return tools
 
-            session.commit()
-            return True
-        finally:
-            session.close()
-    
-    async def delete_tool(self, tool_id: UUID) -> bool:
+    async def update_tool(self, tool_id: Union[str, UUID], updated_data: Union[Dict[str, Any], DBTool]) -> bool:
+        """Update a tool's metadata."""
+        if isinstance(tool_id, str):
+            tool_id = UUID(tool_id)
+            
+        tool = self.db.query(DBTool).filter(DBTool.tool_id == tool_id).first()
+        if not tool:
+            raise ValueError(f"Tool with ID {tool_id} not found")
+        
+        if isinstance(updated_data, DBTool):
+            # If we received a Tool object, extract the relevant fields
+            update_dict = {
+                "name": updated_data.name,
+                "description": updated_data.description,
+                "api_endpoint": updated_data.api_endpoint,
+                "auth_method": updated_data.auth_method,
+                "auth_config": updated_data.auth_config,
+                "params": updated_data.params,
+                "version": updated_data.version,
+                "tags": updated_data.tags,
+            }
+        else:
+            update_dict = updated_data
+            
+        # Update tool fields
+        for key, value in update_dict.items():
+            if hasattr(tool, key) and value is not None:
+                setattr(tool, key, value)
+                
+        self.db.commit()
+        self.db.refresh(tool)
+        
+        # For backward compatibility
+        if tool_id in self.tools:
+            self.tools[tool_id].update(update_dict)
+            
+        return True
+
+    async def delete_tool(self, tool_id: Union[str, UUID]) -> bool:
         """Delete a tool from the registry."""
-        session = next(self.db.get_session())
-        try:
-            db_tool = session.query(DBTool).filter(DBTool.tool_id == tool_id).first()
-            if not db_tool:
-                return False
-
-            session.delete(db_tool)
-            session.commit()
-            return True
-        finally:
-            session.close() 
+        if isinstance(tool_id, str):
+            tool_id = UUID(tool_id)
+            
+        tool = self.db.query(DBTool).filter(DBTool.tool_id == tool_id).first()
+        if not tool:
+            return False
+            
+        self.db.delete(tool)
+        self.db.commit()
+        
+        # For backward compatibility
+        if tool_id in self.tools:
+            del self.tools[tool_id]
+            
+        return True
+        
+    def __del__(self):
+        """Clean up resources."""
+        if self.db_instance is not None:
+            self.db.close() 

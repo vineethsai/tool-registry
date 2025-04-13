@@ -5,8 +5,8 @@ from pydantic import BaseModel, Field
 import jwt
 from passlib.context import CryptContext
 
-class Agent(BaseModel):
-    """Represents an agent in the system."""
+class AgentAuth(BaseModel):
+    """Represents an agent in the authentication system."""
     agent_id: UUID
     name: str
     roles: list[str] = Field(default_factory=list)
@@ -29,11 +29,11 @@ class AuthService:
         self.secret_key = "testsecretkey"  # Default for tests
         self.algorithm = "HS256"
         self.pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-        self._agents: Dict[UUID, Agent] = {}
+        self._agents: Dict[UUID, AgentAuth] = {}
     
-    async def create_agent(self, agent_create) -> Agent:
+    async def create_agent(self, agent_create) -> AgentAuth:
         """Create a new agent."""
-        agent = Agent(
+        agent = AgentAuth(
             agent_id=UUID(int=0),  # This should be generated properly in production
             name=agent_create.name,
             roles=agent_create.roles or [],
@@ -42,7 +42,7 @@ class AuthService:
         self._agents[agent.agent_id] = agent
         return agent
     
-    async def get_agent(self, agent_id: UUID) -> Optional[Agent]:
+    async def get_agent(self, agent_id: UUID) -> Optional[AgentAuth]:
         """Get an agent by ID."""
         return self._agents.get(agent_id)
     
@@ -58,14 +58,14 @@ class AuthService:
         access_token = jwt.encode(token_data, self.secret_key, algorithm=self.algorithm)
         return access_token
     
-    async def verify_token(self, token: str) -> Optional[Agent]:
+    async def verify_token(self, token: str) -> Optional[AgentAuth]:
         """Verify a JWT token and return the associated agent."""
         try:
             payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
             agent_id = UUID(payload["sub"])
             # In a real implementation, fetch from database
             # For testing, just return a simple agent
-            return Agent(
+            return AgentAuth(
                 agent_id=agent_id,
                 name="Test Admin",
                 roles=["admin"],
@@ -83,14 +83,14 @@ class AuthService:
         except jwt.PyJWTError:
             return False
             
-    def is_admin(self, agent: Agent) -> bool:
+    def is_admin(self, agent: AgentAuth) -> bool:
         """Check if an agent has admin role."""
         return "admin" in agent.roles
     
-    def check_permission(self, agent: Agent, permission: str) -> bool:
+    def check_permission(self, agent: AgentAuth, permission: str) -> bool:
         """Check if an agent has a specific permission."""
         return permission in agent.permissions
     
-    def check_role(self, agent: Agent, role: str) -> bool:
+    def check_role(self, agent: AgentAuth, role: str) -> bool:
         """Check if an agent has a specific role."""
         return role in agent.roles 

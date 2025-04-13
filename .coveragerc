@@ -1,0 +1,25 @@
+[run]
+source = tool_registry
+omit =
+    tool_registry/__pycache__/*
+    */tests/*
+    */test_*.py
+    */venv/*
+    */docs/*
+    */.pytest_cache/*
+    */site-packages/*
+
+[report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    def __str__
+    raise NotImplementedError
+    if __name__ == .__main__.:
+    pass
+    raise ImportError
+    except ImportError
+    warnings.warn
+
+[html]
+directory = coverage_html_report 

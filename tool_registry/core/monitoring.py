@@ -1,9 +1,17 @@
+"""
+Monitoring module for the Tool Registry system.
+
+This module provides monitoring and logging functionality for the Tool Registry system,
+including request tracking, error logging, and access logging.
+"""
+
 import logging
 import time
-from typing import Callable, Any
+from typing import Callable, Any, Dict, Optional
 from functools import wraps
 from prometheus_client import Counter, Histogram, start_http_server
 from datetime import datetime
+from uuid import UUID
 
 # Configure logging
 logging.basicConfig(
@@ -106,4 +114,30 @@ def monitor_request(func=None, endpoint=None):
         return wrapper
 
 # Initialize monitoring
-monitoring = Monitoring() 
+monitoring = Monitoring()
+
+async def log_access(
+    agent_id: UUID,
+    tool_id: str,
+    action: str,
+    status: str,
+    details: Optional[Dict[str, Any]] = None
+) -> None:
+    """
+    Log an access attempt to a tool.
+    
+    Args:
+        agent_id: The ID of the agent attempting access
+        tool_id: The ID of the tool being accessed
+        action: The action being performed (e.g., "ACCESS_REQUEST", "VALIDATE_ACCESS")
+        status: The status of the access attempt (e.g., "GRANTED", "DENIED")
+        details: Additional details about the access attempt
+    """
+    log_message = f"Access attempt - Agent: {agent_id}, Tool: {tool_id}, Action: {action}, Status: {status}"
+    if details:
+        log_message += f", Details: {details}"
+    
+    logger.info(log_message)
+    
+    # Update metrics
+    monitoring.log_request(f"/tools/{tool_id}/access", "POST", 200 if status == "GRANTED" else 403) 

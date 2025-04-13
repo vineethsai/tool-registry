@@ -1,131 +1,139 @@
+"""Tests for the Tool Registry core functionality."""
+
 import pytest
-from uuid import UUID
+from uuid import UUID, uuid4
 from sqlalchemy import create_engine
-from tool_registry.core.registry import Tool, ToolMetadata, ToolRegistry
+from sqlalchemy.orm import Session, sessionmaker
+from tool_registry.core.registry import ToolRegistry
 from tool_registry.core.database import Database, Base
-import uuid
-import asyncio
+from tool_registry.models.tool import Tool
+from tool_registry.models.tool_metadata import ToolMetadata
+from tool_registry.models.policy import Policy
+from tool_registry.models.agent import Agent
+from tool_registry.models.access_log import AccessLog
+from tool_registry.models.credential import Credential
+from tool_registry.schemas.tool import ToolCreate
 
 # Test database setup
 TEST_DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(TEST_DATABASE_URL)
+TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 @pytest.fixture(scope="function")
-def db():
-    """Create a test database and yield a Database instance."""
+def db_session():
+    """Create a test database and yield a Session."""
     Base.metadata.create_all(bind=engine)
-    db = Database(TEST_DATABASE_URL)
-    db.init_db()  # Initialize the database by creating all tables
-    yield db
+    session = TestingSessionLocal()
+    yield session
+    session.close()
     Base.metadata.drop_all(bind=engine)
 
 @pytest.fixture
-def tool_metadata():
-    """Create a sample tool metadata."""
-    return ToolMetadata(
-        schema_version="1.0",
-        inputs={"text": {"type": "string"}},
-        outputs={"result": {"type": "string"}}
+def test_tool():
+    """Create a test tool instance."""
+    return Tool(
+        tool_id=uuid4(),
+        name="Test Tool",
+        description="A test tool",
+        api_endpoint="http://test.com/api",
+        auth_method="API_KEY",
+        auth_config={},
+        params={},
+        version="1.0.0",
+        tags=["test"],
+        owner_id=uuid4()
     )
 
 @pytest.fixture
-def tool(tool_metadata):
-    """Create a sample tool."""
-    return Tool(
-        tool_id=uuid.uuid4(),
-        name="test_tool",
-        description="A test tool",
-        version="1.0.0",
-        tool_metadata_rel=tool_metadata,
-        endpoint="https://api.example.com/test",
-        auth_required=True,
-        auth_type="api_key",
-        rate_limit=100,
-        cost_per_call=0.01
+def test_metadata():
+    """Create a test tool metadata instance."""
+    return ToolMetadata(
+        schema_data={"inputs": {}, "outputs": {}},
+        schema_version="1.0",
+        schema_type="openapi",
+        inputs={},
+        outputs={},
+        documentation_url="http://test.com/docs",
+        tool_id=uuid4()
     )
 
+@pytest.fixture
+def tool_registry(db_session):
+    """Create a test tool registry instance."""
+    return ToolRegistry(db_session)
+
 @pytest.mark.asyncio
-async def test_register_tool(db, tool):
+async def test_register_tool(tool_registry, test_tool):
     """Test registering a tool."""
-    registry = ToolRegistry(db)
-    tool_id = await registry.register_tool(tool)
+    tool_id = await tool_registry.register_tool(test_tool)
     assert isinstance(tool_id, UUID)
     
     # Verify the tool can be retrieved
-    retrieved_tool = await registry.get_tool(tool_id)
+    retrieved_tool = await tool_registry.get_tool(tool_id)
     assert retrieved_tool is not None
     assert retrieved_tool.tool_id == tool_id
-    assert retrieved_tool.name == tool.name
-    assert retrieved_tool.description == tool.description
-    assert retrieved_tool.version == tool.version
-    assert retrieved_tool.tool_metadata_rel.schema_version == tool.tool_metadata_rel.schema_version
+    assert retrieved_tool.name == test_tool.name
+    assert retrieved_tool.description == test_tool.description
+    assert retrieved_tool.version == test_tool.version
 
 @pytest.mark.asyncio
-async def test_duplicate_tool_name(db, tool):
+async def test_duplicate_tool_name(tool_registry, test_tool):
     """Test registering a tool with a duplicate name."""
-    registry = ToolRegistry(db)
-    await registry.register_tool(tool)
+    await tool_registry.register_tool(test_tool)
     
     # Try to register another tool with the same name
     duplicate_tool = Tool(
-        tool_id=uuid.uuid4(),
-        name=tool.name,
+        tool_id=uuid4(),
+        name=test_tool.name,
         description="Another tool",
         version="2.0.0",
-        tool_metadata_rel=ToolMetadata(
-            schema_version="1.0",
-            inputs={"query": {"type": "string"}},
-            outputs={"result": {"type": "string"}}
-        ),
-        endpoint="https://api.example.com/another",
-        auth_required=True
+        api_endpoint="https://api.example.com/another",
+        auth_method="API_KEY",
+        auth_config={},
+        params={}
     )
     
     with pytest.raises(ValueError):
-        await registry.register_tool(duplicate_tool)
+        await tool_registry.register_tool(duplicate_tool)
 
 @pytest.mark.asyncio
-async def test_get_nonexistent_tool(db):
+async def test_get_nonexistent_tool(tool_registry):
     """Test getting a tool that doesn't exist."""
-    registry = ToolRegistry(db)
-    tool = await registry.get_tool(UUID('00000000-0000-0000-0000-000000000000'))
+    tool = await tool_registry.get_tool(UUID('00000000-0000-0000-0000-000000000000'))
     assert tool is None
 
 @pytest.mark.asyncio
-async def test_list_tools(db, tool):
+async def test_list_tools(tool_registry, test_tool):
     """Test listing all tools."""
-    registry = ToolRegistry(db)
-    await registry.register_tool(tool)
-    tools = await registry.list_tools()
+    await tool_registry.register_tool(test_tool)
+    tools = await tool_registry.list_tools()
     assert len(tools) == 1
-    assert tools[0].tool_id == tool.tool_id
-    assert tools[0].name == tool.name
+    assert tools[0].tool_id == test_tool.tool_id
+    assert tools[0].name == test_tool.name
 
 @pytest.mark.asyncio
-async def test_search_tools(db, tool):
+async def test_search_tools(tool_registry, test_tool):
     """Test searching for tools."""
-    registry = ToolRegistry(db)
-    await registry.register_tool(tool)
+    await tool_registry.register_tool(test_tool)
     
     # Search by name
-    tools = await registry.search_tools("test_tool")
+    tools = await tool_registry.search_tools("Test Tool")
     assert len(tools) == 1
-    assert tools[0].tool_id == tool.tool_id
+    assert tools[0].tool_id == test_tool.tool_id
     
     # Search by description
-    tools = await registry.search_tools("test tool")
+    tools = await tool_registry.search_tools("test tool")
     assert len(tools) == 1
-    assert tools[0].tool_id == tool.tool_id
+    assert tools[0].tool_id == test_tool.tool_id
     
     # Search with no results
-    tools = await registry.search_tools("nonexistent")
+    tools = await tool_registry.search_tools("nonexistent")
     assert len(tools) == 0
 
 @pytest.mark.asyncio
-async def test_update_tool(db, tool):
+async def test_update_tool(tool_registry, test_tool):
     """Test updating a tool."""
-    registry = ToolRegistry(db)
-    tool_id = await registry.register_tool(tool)
+    tool_id = await tool_registry.register_tool(test_tool)
     
     # Update the tool
     updated_tool = Tool(
@@ -133,35 +141,31 @@ async def test_update_tool(db, tool):
         name="updated_tool",
         description="Updated description",
         version="2.0.0",
-        tool_metadata_rel=ToolMetadata(
-            schema_version="1.1",
-            inputs={"query": {"type": "string"}},
-            outputs={"result": {"type": "object"}}
-        ),
-        endpoint="https://api.example.com/updated",
-        auth_required=False
+        api_endpoint="https://api.example.com/updated",
+        auth_method="NONE",
+        auth_config={},
+        params={}
     )
     
-    success = await registry.update_tool(tool_id, updated_tool)
+    success = await tool_registry.update_tool(tool_id, updated_tool)
     assert success
     
     # Verify the update
-    retrieved_tool = await registry.get_tool(tool_id)
+    retrieved_tool = await tool_registry.get_tool(tool_id)
     assert retrieved_tool.name == "updated_tool"
     assert retrieved_tool.description == "Updated description"
     assert retrieved_tool.version == "2.0.0"
-    assert not retrieved_tool.auth_required
+    assert retrieved_tool.auth_method == "NONE"
 
 @pytest.mark.asyncio
-async def test_delete_tool(db, tool):
+async def test_delete_tool(tool_registry, test_tool):
     """Test deleting a tool."""
-    registry = ToolRegistry(db)
-    tool_id = await registry.register_tool(tool)
+    tool_id = await tool_registry.register_tool(test_tool)
     
     # Delete the tool
-    success = await registry.delete_tool(tool_id)
+    success = await tool_registry.delete_tool(tool_id)
     assert success
     
     # Verify the tool is gone
-    retrieved_tool = await registry.get_tool(tool_id)
+    retrieved_tool = await tool_registry.get_tool(tool_id)
     assert retrieved_tool is None 

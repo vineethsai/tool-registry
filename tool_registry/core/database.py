@@ -1,107 +1,72 @@
-import json
-from sqlalchemy import create_engine, Column, String, Boolean, Integer, Float, DateTime, ForeignKey, JSON, Text
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
-from sqlalchemy.dialects.postgresql import UUID
-from datetime import datetime
-import uuid
+"""Database configuration and session management."""
 
-# Custom JSON encoder
-class DateTimeEncoder(json.JSONEncoder):
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, Session
+from sqlalchemy.pool import StaticPool
+import json
+from uuid import UUID
+from typing import Generator
+
+# Custom JSON serializer for handling UUIDs
+class UUIDEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, datetime):
-            return obj.isoformat()
-        if isinstance(obj, uuid.UUID):
+        if isinstance(obj, UUID):
+            # Convert UUID to string
             return str(obj)
         return super().default(obj)
 
+# Configure SQLAlchemy to use our custom JSON encoder for all JSON columns
+from sqlalchemy.dialects.postgresql import JSON as PG_JSON
+from sqlalchemy import JSON as SA_JSON
+
+# Override the JSON serializer
+PG_JSON.serializer = lambda obj: json.dumps(obj, cls=UUIDEncoder)
+SA_JSON.serializer = lambda obj: json.dumps(obj, cls=UUIDEncoder)
+
+# Create base class for models
 Base = declarative_base()
 
-class ToolMetadata(Base):
-    __tablename__ = "tool_metadata"
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    schema_version = Column(String, nullable=False, default="1.0")
-    inputs = Column(JSON, nullable=False, default=dict)
-    outputs = Column(JSON, nullable=False, default=dict)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-class Tool(Base):
-    __tablename__ = "tools"
-    
-    tool_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String, nullable=False)
-    description = Column(String, nullable=False)
-    version = Column(String, nullable=False)
-    tool_metadata_id = Column(UUID(as_uuid=True), ForeignKey("tool_metadata.id"), nullable=True)
-    tool_metadata_json = Column(Text, nullable=False)  # Store as JSON string
-    endpoint = Column(String, nullable=False)
-    auth_required = Column(Boolean, default=False)
-    auth_type = Column(String)
-    auth_config = Column(Text)  # Store as JSON string
-    rate_limit = Column(Integer)
-    cost_per_call = Column(Float)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    tool_metadata_rel = relationship("ToolMetadata", foreign_keys=[tool_metadata_id])
-    
-    @property
-    def tool_metadata_dict(self):
-        """Convert JSON string to dictionary"""
-        if isinstance(self.tool_metadata_json, str):
-            try:
-                return json.loads(self.tool_metadata_json)
-            except:
-                return {}
-        return self.tool_metadata_json
-    
-    @tool_metadata_dict.setter
-    def tool_metadata_dict(self, value):
-        """Convert dictionary to JSON string"""
-        if isinstance(value, dict):
-            self.tool_metadata_json = json.dumps(value, cls=DateTimeEncoder)
-        else:
-            self.tool_metadata_json = value
-
-class Agent(Base):
-    __tablename__ = "agents"
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String, nullable=False)
-    roles = Column(JSON, nullable=False, default=list)
-    permissions = Column(JSON, nullable=False, default=list)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-
-class Credential(Base):
-    __tablename__ = "credentials"
-    
-    credential_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    agent_id = Column(UUID(as_uuid=True), ForeignKey("agents.id"), nullable=False)
-    tool_id = Column(UUID(as_uuid=True), ForeignKey("tools.tool_id"), nullable=False)
-    token = Column(String, unique=True, nullable=False)
-    expires_at = Column(DateTime, nullable=False)
-    scopes = Column(JSON, nullable=False, default=list)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-    agent = relationship("Agent", backref="credentials")
-    tool = relationship("Tool", backref="credentials")
-
 class Database:
-    def __init__(self, connection_string: str):
-        self.engine = create_engine(connection_string)
+    """Database management class for the Tool Registry system."""
+    
+    def __init__(self, database_url: str = "sqlite:///./test.db"):
+        """Initialize the database with the given URL."""
+        self.database_url = database_url
+        self.engine = create_engine(
+            database_url,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool
+        )
         self.SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=self.engine)
         
+    def get_session(self) -> Generator[Session, None, None]:
+        """Get a database session."""
+        db = self.SessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+            
     def init_db(self):
         """Initialize the database by creating all tables."""
         Base.metadata.create_all(bind=self.engine)
-    
-    def get_session(self):
-        """Get a database session."""
-        session = self.SessionLocal()
-        try:
-            yield session
-        finally:
-            session.close() 
+
+# Create default database instance
+database = Database()
+engine = database.engine
+SessionLocal = database.SessionLocal
+
+# Dependency to get DB session
+def get_db() -> Generator[Session, None, None]:
+    """Provide a database session for dependency injection."""
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+# Initialize tables
+Base.metadata.create_all(bind=engine)
+
+__all__ = ['Base', 'engine', 'SessionLocal', 'get_db', 'Database'] 
