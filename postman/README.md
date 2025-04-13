@@ -17,6 +17,9 @@ The collection includes the following API endpoint groups:
 5. **Access Control** - Endpoints for requesting and validating access to tools
 6. **Credentials** - Endpoints for managing tool access credentials
 7. **Monitoring** - Endpoints for system monitoring, health checks, and usage statistics
+8. **Test Data Generation** - Tools for generating test data in bulk for comprehensive testing
+9. **Acceptance Test Scenarios** - End-to-end test workflows covering core business functionality
+10. **Security Testing** - Security and penetration testing scenarios
 
 ## Setup Instructions
 
@@ -39,6 +42,54 @@ The environment includes test variables for easier testing:
 - `testPolicyId` - Sample policy ID for testing endpoints
 - `testCredentialId` - Sample credential ID for testing endpoints
 - `testCredentialToken` - Sample credential token for testing
+
+## Comprehensive Testing Capabilities
+
+### Test Data Generation
+
+The collection includes utilities for generating test data in bulk:
+
+1. Individual generators for agents, tools, policies, access requests, and credentials
+2. A "Generate Multiple Test Entities" request that can be used with the Collection Runner to create multiple entities at once
+3. Clean-up tools for removing test data references
+
+Each test data generation request:
+- Creates entities with unique names (using timestamps)
+- Stores entity IDs in environment variables for later use
+- Maintains arrays of IDs for bulk operations
+
+### Acceptance Testing
+
+Ready-to-use acceptance test scenarios cover core business flows:
+
+1. **Agent Registration and Management** - Create, verify, and update agents
+2. **Tool Registration Flow** - Register new tools and verify their existence
+3. **Policy Creation and Access Control** - Create policies and validate access
+4. **Credential Management** - Generate and verify credentials
+
+Each acceptance test includes:
+- Pre-request scripts for setup
+- Test scripts that validate correct API behavior
+- Clear pass/fail criteria
+- Environment variable storage for cross-request data sharing
+
+### Security Testing
+
+The collection includes a suite of security tests to identify potential vulnerabilities:
+
+1. **Input Validation Tests** - SQL injection, XSS, and XXE attack attempts
+2. **Authorization Tests** - Access control and directory traversal attempts
+3. **Data Validation Tests** - Invalid input formats and excessive payloads
+4. **Rate Limiting Tests** - API flood protection checks
+
+## Running Test Suites
+
+To run comprehensive test suites:
+
+1. Use the Postman Collection Runner to execute test folders
+2. For data generation, set the desired quantity in the "Generate Multiple Test Entities" request
+3. For security testing, review the test results to identify potential vulnerabilities
+4. Use the environment variables panel to monitor stored test entities
 
 ## Base URL Configuration
 

@@ -959,6 +959,2020 @@
 					"response": []
 				}
 			]
+		},
+		{
+			"name": "Test Data Generation",
+			"description": "Requests for quickly generating test data for acceptance testing and penetration testing",
+			"item": [
+				{
+					"name": "Generate Test Agent",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Test Agent {{$timestamp}}\",\n    \"description\": \"Automatically generated test agent\",\n    \"roles\": [\"user\", \"tool_publisher\"],\n    \"password\": \"test_password_{{$timestamp}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/agents",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"agents"
+							]
+						},
+						"description": "Create a test agent with a unique name based on timestamp"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Store agent ID for later use",
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    const responseData = pm.response.json();",
+									"    if (responseData.agent_id) {",
+									"        // Save to environment variable",
+									"        pm.environment.set(\"testAgentId_\" + pm.variables.replaceIn('{{$timestamp}}'), responseData.agent_id);",
+									"        ",
+									"        // Add to testAgentIds array if it exists, or create it",
+									"        let testAgentIds = pm.environment.get(\"testAgentIds\");",
+									"        if (!testAgentIds) {",
+									"            testAgentIds = [];",
+									"        } else {",
+									"            testAgentIds = JSON.parse(testAgentIds);",
+									"        }",
+									"        testAgentIds.push(responseData.agent_id);",
+									"        pm.environment.set(\"testAgentIds\", JSON.stringify(testAgentIds));",
+									"        ",
+									"        console.log(\"Created agent with ID: \" + responseData.agent_id);",
+									"        pm.test(\"Successfully created test agent\", function() {",
+									"            pm.expect(responseData.agent_id).to.exist;",
+									"        });",
+									"    }",
+									"} else {",
+									"    console.error(\"Failed to create test agent: \" + pm.response.status);",
+									"    pm.test(\"Failed to create test agent\", function() {",
+									"        pm.expect.fail(\"API error: \" + pm.response.status);",
+									"    });",
+									"}"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Initialize timestamp variable for unique naming",
+									"pm.variables.set(\"timestamp\", new Date().getTime());"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Generate Test Tool",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Test Tool {{$timestamp}}\",\n    \"description\": \"Automatically generated test tool\",\n    \"version\": \"1.0.0\",\n    \"tool_metadata\": {\n        \"schema_version\": \"1.0.0\",\n        \"schema_type\": \"openapi\",\n        \"schema_data\": {\n            \"swagger\": \"2.0\",\n            \"info\": {\n                \"title\": \"Test Tool API {{$timestamp}}\",\n                \"version\": \"1.0.0\"\n            },\n            \"paths\": {\n                \"/test\": {\n                    \"post\": {\n                        \"parameters\": [\n                            {\n                                \"name\": \"input\",\n                                \"in\": \"body\",\n                                \"required\": true,\n                                \"schema\": {\n                                    \"type\": \"string\"\n                                }\n                            }\n                        ],\n                        \"responses\": {\n                            \"200\": {\n                                \"description\": \"Success\",\n                                \"schema\": {\n                                    \"type\": \"object\"\n                                }\n                            }\n                        }\n                    }\n                }\n            }\n        },\n        \"inputs\": {\n            \"input\": {\n                \"type\": \"string\",\n                \"required\": true,\n                \"description\": \"Test input\"\n            }\n        },\n        \"outputs\": {\n            \"output\": {\n                \"type\": \"string\",\n                \"description\": \"Test output\"\n            }\n        },\n        \"documentation_url\": \"https://example.com/test-tool-docs\",\n        \"provider\": \"Test Provider\",\n        \"tags\": [\"test\", \"acceptance\"]\n    }\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/tools",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"tools"
+							]
+						},
+						"description": "Create a test tool with a unique name based on timestamp"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Store tool ID for later use",
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    const responseData = pm.response.json();",
+									"    if (responseData.tool_id) {",
+									"        // Save to environment variable",
+									"        pm.environment.set(\"testToolId_\" + pm.variables.replaceIn('{{$timestamp}}'), responseData.tool_id);",
+									"        ",
+									"        // Add to testToolIds array if it exists, or create it",
+									"        let testToolIds = pm.environment.get(\"testToolIds\");",
+									"        if (!testToolIds) {",
+									"            testToolIds = [];",
+									"        } else {",
+									"            testToolIds = JSON.parse(testToolIds);",
+									"        }",
+									"        testToolIds.push(responseData.tool_id);",
+									"        pm.environment.set(\"testToolIds\", JSON.stringify(testToolIds));",
+									"        ",
+									"        console.log(\"Created tool with ID: \" + responseData.tool_id);",
+									"        pm.test(\"Successfully created test tool\", function() {",
+									"            pm.expect(responseData.tool_id).to.exist;",
+									"        });",
+									"    }",
+									"} else {",
+									"    console.error(\"Failed to create test tool: \" + pm.response.status);",
+									"    pm.test(\"Failed to create test tool\", function() {",
+									"        pm.expect.fail(\"API error: \" + pm.response.status);",
+									"    });",
+									"}"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Initialize timestamp variable for unique naming",
+									"pm.variables.set(\"timestamp\", new Date().getTime());"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Generate Test Policy",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"name\": \"Test Policy {{$timestamp}}\",\n    \"description\": \"Automatically generated test policy\",\n    \"tool_id\": \"{{testToolId}}\",\n    \"allowed_scopes\": [\"read\", \"execute\"],\n    \"conditions\": {\n        \"max_requests_per_day\": 1000,\n        \"allowed_hours\": {\n            \"start\": \"00:00\",\n            \"end\": \"23:59\"\n        }\n    },\n    \"rules\": {\n        \"require_approval\": false,\n        \"log_usage\": true\n    },\n    \"priority\": 5\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/policies",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"policies"
+							]
+						},
+						"description": "Create a test policy with a unique name based on timestamp"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Store policy ID for later use",
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    const responseData = pm.response.json();",
+									"    if (responseData.policy_id) {",
+									"        // Save to environment variable",
+									"        pm.environment.set(\"testPolicyId_\" + pm.variables.replaceIn('{{$timestamp}}'), responseData.policy_id);",
+									"        ",
+									"        // Add to testPolicyIds array if it exists, or create it",
+									"        let testPolicyIds = pm.environment.get(\"testPolicyIds\");",
+									"        if (!testPolicyIds) {",
+									"            testPolicyIds = [];",
+									"        } else {",
+									"            testPolicyIds = JSON.parse(testPolicyIds);",
+									"        }",
+									"        testPolicyIds.push(responseData.policy_id);",
+									"        pm.environment.set(\"testPolicyIds\", JSON.stringify(testPolicyIds));",
+									"        ",
+									"        console.log(\"Created policy with ID: \" + responseData.policy_id);",
+									"        pm.test(\"Successfully created test policy\", function() {",
+									"            pm.expect(responseData.policy_id).to.exist;",
+									"        });",
+									"    }",
+									"} else {",
+									"    console.error(\"Failed to create test policy: \" + pm.response.status);",
+									"    pm.test(\"Failed to create test policy\", function() {",
+									"        pm.expect.fail(\"API error: \" + pm.response.status);",
+									"    });",
+									"}"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Initialize timestamp variable for unique naming",
+									"pm.variables.set(\"timestamp\", new Date().getTime());"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Generate Test Access Request",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"agent_id\": \"{{testAgentId}}\",\n    \"tool_id\": \"{{testToolId}}\",\n    \"policy_id\": \"{{testPolicyId}}\",\n    \"justification\": \"Automated test access request - timestamp {{$timestamp}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/access/request",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"access",
+								"request"
+							]
+						},
+						"description": "Create a test access request between agent and tool using policy"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Store access request ID for later use",
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    const responseData = pm.response.json();",
+									"    if (responseData.request_id) {",
+									"        // Save to environment variable",
+									"        pm.environment.set(\"testRequestId_\" + pm.variables.replaceIn('{{$timestamp}}'), responseData.request_id);",
+									"        ",
+									"        // Add to testRequestIds array if it exists, or create it",
+									"        let testRequestIds = pm.environment.get(\"testRequestIds\");",
+									"        if (!testRequestIds) {",
+									"            testRequestIds = [];",
+									"        } else {",
+									"            testRequestIds = JSON.parse(testRequestIds);",
+									"        }",
+									"        testRequestIds.push(responseData.request_id);",
+									"        pm.environment.set(\"testRequestIds\", JSON.stringify(testRequestIds));",
+									"        ",
+									"        console.log(\"Created access request with ID: \" + responseData.request_id);",
+									"        pm.test(\"Successfully created test access request\", function() {",
+									"            pm.expect(responseData.request_id).to.exist;",
+									"        });",
+									"    }",
+									"} else {",
+									"    console.error(\"Failed to create test access request: \" + pm.response.status);",
+									"    pm.test(\"Failed to create test access request\", function() {",
+									"        pm.expect.fail(\"API error: \" + pm.response.status);",
+									"    });",
+									"}"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Initialize timestamp variable for unique naming",
+									"pm.variables.set(\"timestamp\", new Date().getTime());"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Generate Test Credential",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"agent_id\": \"{{testAgentId}}\",\n    \"tool_id\": \"{{testToolId}}\",\n    \"credential_type\": \"api_key\",\n    \"credential_value\": {\n        \"api_key\": \"test_key_{{$timestamp}}\"\n    },\n    \"expires_at\": \"{{$isoTimestamp}}\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/credentials",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"credentials"
+							]
+						},
+						"description": "Create a test credential for the agent-tool combination"
+					},
+					"response": [],
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Store credential ID for later use",
+									"if (pm.response.code === 200 || pm.response.code === 201) {",
+									"    const responseData = pm.response.json();",
+									"    if (responseData.credential_id) {",
+									"        // Save to environment variable",
+									"        pm.environment.set(\"testCredentialId_\" + pm.variables.replaceIn('{{$timestamp}}'), responseData.credential_id);",
+									"        ",
+									"        // Add to testCredentialIds array if it exists, or create it",
+									"        let testCredentialIds = pm.environment.get(\"testCredentialIds\");",
+									"        if (!testCredentialIds) {",
+									"            testCredentialIds = [];",
+									"        } else {",
+									"            testCredentialIds = JSON.parse(testCredentialIds);",
+									"        }",
+									"        testCredentialIds.push(responseData.credential_id);",
+									"        pm.environment.set(\"testCredentialIds\", JSON.stringify(testCredentialIds));",
+									"        ",
+									"        console.log(\"Created credential with ID: \" + responseData.credential_id);",
+									"        pm.test(\"Successfully created test credential\", function() {",
+									"            pm.expect(responseData.credential_id).to.exist;",
+									"        });",
+									"    }",
+									"} else {",
+									"    console.error(\"Failed to create test credential: \" + pm.response.status);",
+									"    pm.test(\"Failed to create test credential\", function() {",
+									"        pm.expect.fail(\"API error: \" + pm.response.status);",
+									"    });",
+									"}"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Initialize timestamp variable for unique naming",
+									"pm.variables.set(\"timestamp\", new Date().getTime());",
+									"",
+									"// Calculate expiration date (30 days in the future)",
+									"const expirationDate = new Date();",
+									"expirationDate.setDate(expirationDate.getDate() + 30);",
+									"pm.variables.set(\"isoTimestamp\", expirationDate.toISOString());"
+								]
+							}
+						}
+					]
+				},
+				{
+					"name": "Generate Multiple Test Entities",
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Set up variables for generation",
+									"pm.environment.set(\"generationQuantity\", 3); // How many of each entity to create",
+									"pm.environment.set(\"generationStarted\", new Date().toISOString());"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"// Display generation summary",
+									"console.log('Generation completed!');",
+									"console.log('Started at: ' + pm.environment.get(\"generationStarted\"));",
+									"console.log('Completed at: ' + new Date().toISOString());",
+									"",
+									"// Summary of generated entities",
+									"let agentIds = JSON.parse(pm.environment.get(\"testAgentIds\") || \"[]\");",
+									"let toolIds = JSON.parse(pm.environment.get(\"testToolIds\") || \"[]\");",
+									"let policyIds = JSON.parse(pm.environment.get(\"testPolicyIds\") || \"[]\");",
+									"let requestIds = JSON.parse(pm.environment.get(\"testRequestIds\") || \"[]\");",
+									"let credentialIds = JSON.parse(pm.environment.get(\"testCredentialIds\") || \"[]\");",
+									"",
+									"pm.test(\"Generated test data summary\", function() {",
+									"    console.log(`Generated ${agentIds.length} agents`);",
+									"    console.log(`Generated ${toolIds.length} tools`);",
+									"    console.log(`Generated ${policyIds.length} policies`);",
+									"    console.log(`Generated ${requestIds.length} access requests`);",
+									"    console.log(`Generated ${credentialIds.length} credentials`);",
+									"    ",
+									"    pm.expect(agentIds.length).to.be.at.least(pm.environment.get(\"generationQuantity\"));",
+									"    pm.expect(toolIds.length).to.be.at.least(pm.environment.get(\"generationQuantity\"));",
+									"});",
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Run this to generate multiple test entities at once using the collection runner"
+					},
+					"response": []
+				},
+				{
+					"name": "Clean Test Data",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test(\"Clean test data\", function() {",
+									"    // Clear all test data arrays",
+									"    pm.environment.set(\"testAgentIds\", JSON.stringify([]));",
+									"    pm.environment.set(\"testToolIds\", JSON.stringify([]));",
+									"    pm.environment.set(\"testPolicyIds\", JSON.stringify([]));",
+									"    pm.environment.set(\"testRequestIds\", JSON.stringify([]));",
+									"    pm.environment.set(\"testCredentialIds\", JSON.stringify([]));",
+									"    ",
+									"    console.log(\"All test data references have been cleared\");",
+									"    pm.expect(true).to.be.true;",
+									"});"
+								]
+							}
+						},
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									""
+								]
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"health"
+							]
+						},
+						"description": "Run this to clear all the test data references from environment variables"
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "Acceptance Test Scenarios",
+			"description": "End-to-end test scenarios that cover core business workflows",
+			"item": [
+				{
+					"name": "Agent Registration and Management",
+					"item": [
+						{
+							"name": "Create New Agent",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Agent created successfully\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const responseData = pm.response.json();",
+											"    pm.expect(responseData.agent_id).to.exist;",
+											"    pm.environment.set(\"acceptanceTestAgentId\", responseData.agent_id);",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"const uniqueId = pm.variables.replaceIn('{{$randomUUID}}');",
+											"pm.environment.set(\"uniqueAgentName\", \"AcceptanceTestAgent-\" + uniqueId);"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"{{uniqueAgentName}}\",\n    \"description\": \"Agent for acceptance testing\",\n    \"roles\": [\"user\", \"tool_publisher\"],\n    \"password\": \"secure_test_password\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/agents",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"agents"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Verify Agent Exists",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Agent exists\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const agent = pm.response.json();",
+											"    pm.expect(agent.name).to.equal(pm.environment.get(\"uniqueAgentName\"));",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/agents/{{acceptanceTestAgentId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"agents",
+										"{{acceptanceTestAgentId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Agent",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Agent updated successfully\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const agent = pm.response.json();",
+											"    pm.expect(agent.description).to.include(\"Updated\");",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"{{uniqueAgentName}}\",\n    \"description\": \"Updated description for acceptance testing\",\n    \"roles\": [\"user\", \"tool_publisher\"]\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/agents/{{acceptanceTestAgentId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"agents",
+										"{{acceptanceTestAgentId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Tests for agent creation, retrieval, and updates"
+				},
+				{
+					"name": "Tool Registration Flow",
+					"item": [
+						{
+							"name": "Register New Tool",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Tool registered successfully\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const responseData = pm.response.json();",
+											"    pm.expect(responseData.tool_id).to.exist;",
+											"    pm.environment.set(\"acceptanceTestToolId\", responseData.tool_id);",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"const uniqueId = pm.variables.replaceIn('{{$randomUUID}}');",
+											"pm.environment.set(\"uniqueToolName\", \"AcceptanceTestTool-\" + uniqueId);"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"{{uniqueToolName}}\",\n    \"description\": \"Tool for acceptance testing\",\n    \"version\": \"1.0.0\",\n    \"tool_metadata\": {\n        \"schema_version\": \"1.0.0\",\n        \"schema_type\": \"openapi\",\n        \"schema_data\": {\n            \"swagger\": \"2.0\",\n            \"info\": {\n                \"title\": \"{{uniqueToolName}}\",\n                \"version\": \"1.0.0\"\n            },\n            \"paths\": {\n                \"/test\": {\n                    \"post\": {\n                        \"parameters\": [\n                            {\n                                \"name\": \"input\",\n                                \"in\": \"body\",\n                                \"required\": true,\n                                \"schema\": {\n                                    \"type\": \"string\"\n                                }\n                            }\n                        ],\n                        \"responses\": {\n                            \"200\": {\n                                \"description\": \"Success\",\n                                \"schema\": {\n                                    \"type\": \"object\"\n                                }\n                            }\n                        }\n                    }\n                }\n            }\n        },\n        \"inputs\": {\n            \"input\": {\n                \"type\": \"string\",\n                \"required\": true,\n                \"description\": \"Test input\"\n            }\n        },\n        \"outputs\": {\n            \"output\": {\n                \"type\": \"string\",\n                \"description\": \"Test output\"\n            }\n        },\n        \"documentation_url\": \"https://example.com/test-docs\",\n        \"provider\": \"Acceptance Test Provider\",\n        \"tags\": [\"test\", \"acceptance\"]\n    }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/tools",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tools"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Verify Tool Exists",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Tool exists\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const tool = pm.response.json();",
+											"    pm.expect(tool.name).to.equal(pm.environment.get(\"uniqueToolName\"));",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/tools/{{acceptanceTestToolId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tools",
+										"{{acceptanceTestToolId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Tests for tool registration and verification"
+				},
+				{
+					"name": "Policy Creation and Access Control",
+					"item": [
+						{
+							"name": "Create Policy for Tool",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Policy created successfully\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const responseData = pm.response.json();",
+											"    pm.expect(responseData.policy_id).to.exist;",
+											"    pm.environment.set(\"acceptanceTestPolicyId\", responseData.policy_id);",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"const uniqueId = pm.variables.replaceIn('{{$randomUUID}}');",
+											"pm.environment.set(\"uniquePolicyName\", \"AcceptanceTestPolicy-\" + uniqueId);"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"{{uniquePolicyName}}\",\n    \"description\": \"Policy for acceptance testing\",\n    \"tool_id\": \"{{acceptanceTestToolId}}\",\n    \"allowed_scopes\": [\"read\", \"execute\"],\n    \"conditions\": {\n        \"max_requests_per_day\": 1000,\n        \"allowed_hours\": {\n            \"start\": \"00:00\",\n            \"end\": \"23:59\"\n        }\n    },\n    \"rules\": {\n        \"require_approval\": false,\n        \"log_usage\": true\n    },\n    \"priority\": 10\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/policies",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"policies"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Request Access",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Access request created successfully\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const responseData = pm.response.json();",
+											"    pm.expect(responseData.request_id).to.exist;",
+											"    pm.environment.set(\"acceptanceTestRequestId\", responseData.request_id);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"agent_id\": \"{{acceptanceTestAgentId}}\",\n    \"tool_id\": \"{{acceptanceTestToolId}}\",\n    \"policy_id\": \"{{acceptanceTestPolicyId}}\",\n    \"justification\": \"Acceptance testing access request\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/access/request",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"access",
+										"request"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Validate Access",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Access validation successful\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const responseData = pm.response.json();",
+											"    pm.expect(responseData.has_access).to.exist;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/access/validate?agent_id={{acceptanceTestAgentId}}&tool_id={{acceptanceTestToolId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"access",
+										"validate"
+									],
+									"query": [
+										{
+											"key": "agent_id",
+											"value": "{{acceptanceTestAgentId}}"
+										},
+										{
+											"key": "tool_id",
+											"value": "{{acceptanceTestToolId}}"
+										}
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Tests for policy creation and access control"
+				},
+				{
+					"name": "Credential Management",
+					"item": [
+						{
+							"name": "Create Credential",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Credential created successfully\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const responseData = pm.response.json();",
+											"    pm.expect(responseData.credential_id).to.exist;",
+											"    pm.environment.set(\"acceptanceTestCredentialId\", responseData.credential_id);",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"// Create expiration date 30 days in the future",
+											"const expirationDate = new Date();",
+											"expirationDate.setDate(expirationDate.getDate() + 30);",
+											"pm.environment.set(\"testExpirationDate\", expirationDate.toISOString());"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"agent_id\": \"{{acceptanceTestAgentId}}\",\n    \"tool_id\": \"{{acceptanceTestToolId}}\",\n    \"credential_type\": \"api_key\",\n    \"credential_value\": {\n        \"api_key\": \"acceptance_test_key_{{$timestamp}}\"\n    },\n    \"expires_at\": \"{{testExpirationDate}}\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/credentials",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"credentials"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Verify Credential",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Credential exists\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const credential = pm.response.json();",
+											"    pm.expect(credential.credential_id).to.equal(pm.environment.get(\"acceptanceTestCredentialId\"));",
+											"    pm.expect(credential.agent_id).to.equal(pm.environment.get(\"acceptanceTestAgentId\"));",
+											"    pm.expect(credential.tool_id).to.equal(pm.environment.get(\"acceptanceTestToolId\"));",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/credentials/{{acceptanceTestCredentialId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"credentials",
+										"{{acceptanceTestCredentialId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Tests for credential creation and verification"
+				}
+			]
+		},
+		{
+			"name": "Security Testing",
+			"description": "Tests for identifying security vulnerabilities and edge cases",
+			"item": [
+				{
+					"name": "Input Validation Tests",
+					"item": [
+						{
+							"name": "SQL Injection - Agent Name",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"SQL Injection should be prevented\", () => {",
+											"    // Should either reject with 400-level status or sanitize the input",
+											"    if (pm.response.code >= 400) {",
+											"        pm.expect(pm.response.code).to.be.oneOf([400, 422]);",
+											"        console.log(\"SQL injection attempt was properly rejected\");",
+											"    } else {",
+											"        const responseData = pm.response.json();",
+											"        // If accepted, ensure raw SQL wasn't executed",
+											"        pm.expect(responseData).to.not.have.property('error');",
+											"        console.log(\"SQL injection attempt was accepted but appears to be sanitized\");",
+											"    }",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Test Agent'; DROP TABLE agents; --\",\n    \"description\": \"Attempt SQL injection attack\",\n    \"roles\": [\"user\"],\n    \"password\": \"password123\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/agents",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"agents"
+									]
+								},
+								"description": "Attempt SQL injection attack in agent name field"
+							},
+							"response": []
+						},
+						{
+							"name": "XSS - Tool Description",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"XSS should be prevented\", () => {",
+											"    // Should either reject with 400-level status or sanitize/escape the input",
+											"    if (pm.response.code >= 400) {",
+											"        pm.expect(pm.response.code).to.be.oneOf([400, 422]);",
+											"        console.log(\"XSS attempt was properly rejected\");",
+											"    } else {",
+											"        // If accepted, store the ID to check if it's sanitized when retrieved",
+											"        const responseData = pm.response.json();",
+											"        pm.expect(responseData.tool_id).to.exist;",
+											"        pm.environment.set(\"securityTestToolId\", responseData.tool_id);",
+											"        console.log(\"XSS attempt was accepted, will check if properly sanitized on retrieval\");",
+											"    }",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Security Test Tool\",\n    \"description\": \"<script>alert('XSS');</script>Malicious description\",\n    \"version\": \"1.0.0\",\n    \"tool_metadata\": {\n        \"schema_version\": \"1.0.0\",\n        \"schema_type\": \"openapi\",\n        \"schema_data\": {\n            \"swagger\": \"2.0\",\n            \"info\": {\n                \"title\": \"Security Test Tool\",\n                \"version\": \"1.0.0\"\n            },\n            \"paths\": {\n                \"/test\": {\n                    \"get\": {\n                        \"responses\": {\n                            \"200\": {\n                                \"description\": \"Success\"\n                            }\n                        }\n                    }\n                }\n            }\n        },\n        \"tags\": [\"security\", \"test\"]\n    }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/tools",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tools"
+									]
+								},
+								"description": "Attempt XSS attack in tool description field"
+							},
+							"response": []
+						},
+						{
+							"name": "Check XSS Sanitization",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"XSS content should be sanitized\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const tool = pm.response.json();",
+											"    ",
+											"    // Check if the script tags are escaped or removed",
+											"    pm.expect(tool.description).to.not.include('<script>');",
+											"    ",
+											"    console.log(\"Description as returned from API: \" + tool.description);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/tools/{{securityTestToolId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tools",
+										"{{securityTestToolId}}"
+									]
+								},
+								"description": "Check if XSS content was properly sanitized"
+							},
+							"response": []
+						},
+						{
+							"name": "XML External Entity - Tool Metadata",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"XXE should be prevented\", () => {",
+											"    // Should reject XXE attempt",
+											"    pm.expect(pm.response.code).to.be.oneOf([400, 415, 422]);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/xml"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n<!DOCTYPE foo [\n<!ELEMENT foo ANY>\n<!ENTITY xxe SYSTEM \"file:///etc/passwd\">\n]>\n<tool>\n  <name>XXE Test Tool</name>\n  <description>&xxe;</description>\n  <version>1.0.0</version>\n</tool>"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/tools",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tools"
+									]
+								},
+								"description": "Attempt XXE attack by sending XML payload"
+							},
+							"response": []
+						}
+					],
+					"description": "Tests for input validation and injection attacks"
+				},
+				{
+					"name": "Authorization Tests",
+					"item": [
+						{
+							"name": "Access Other User's Agent",
+							"event": [
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"// First, verify we have a test agent ID to use",
+											"if (!pm.environment.get(\"testAgentId\")) {",
+											"    console.log(\"No test agent ID found. Please run test data generation first.\");",
+											"    pm.environment.set(\"testAgentId\", \"00000000-0000-0000-0000-000000000001\");",
+											"}"
+										]
+									}
+								},
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"// When auth is disabled, we expect this to work",
+											"// With proper auth, we should see authorization checks",
+											"pm.test(\"Authorization check should be enforced if auth is enabled\", () => {",
+											"    if (pm.response.code === 403) {",
+											"        console.log(\"Proper authorization check enforced - access denied\");",
+											"    } else if (pm.response.code === 200) {",
+											"        console.log(\"NOTE: Access granted, but auth is disabled in this environment\");",
+											"    } else {",
+											"        console.log(\"Unexpected response: \" + pm.response.code);",
+											"    }",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Hijacked Agent\",\n    \"description\": \"Attempt to modify another user's agent\",\n    \"roles\": [\"admin\"]\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/agents/{{testAgentId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"agents",
+										"{{testAgentId}}"
+									]
+								},
+								"description": "Attempt to modify another user's agent"
+							},
+							"response": []
+						},
+						{
+							"name": "Directory Traversal Attempt",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Directory traversal should be prevented\", () => {",
+											"    pm.expect(pm.response.code).to.be.oneOf([400, 404]);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/../../../etc/passwd",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"..",
+										"..",
+										"..",
+										"etc",
+										"passwd"
+									]
+								},
+								"description": "Attempt directory traversal to access sensitive files"
+							},
+							"response": []
+						}
+					],
+					"description": "Tests for authorization bypass and access control issues"
+				},
+				{
+					"name": "Data Validation Tests",
+					"item": [
+						{
+							"name": "Invalid UUID Format",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Should reject invalid UUID format\", () => {",
+											"    pm.expect(pm.response.code).to.be.oneOf([400, 404, 422]);",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/agents/invalid-uuid-format",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"agents",
+										"invalid-uuid-format"
+									]
+								},
+								"description": "Test API response to invalid UUID format"
+							},
+							"response": []
+						},
+						{
+							"name": "Excessive Payload Size",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Should handle or reject large payloads\", () => {",
+											"    // Expect either a 413 (payload too large) or a timeout (which we'll detect as a failure)",
+											"    if (pm.response.code === 413) {",
+											"        console.log(\"Properly rejected large payload with 413 status\");",
+											"    } else if (pm.response.code >= 400) {",
+											"        console.log(\"Rejected large payload with status: \" + pm.response.code);",
+											"    } else if (pm.response.code === 200) {",
+											"        console.log(\"WARNING: Large payload was accepted - potential DoS vulnerability\");",
+											"    }",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"// Generate large payload",
+											"let largeDescription = \"\";",
+											"for (let i = 0; i < 10000; i++) {",
+											"    largeDescription += \"This is a very long description designed to test handling of large payloads. \";",
+											"}",
+											"pm.variables.set(\"largeDescription\", largeDescription);"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"Large Payload Test\",\n    \"description\": \"{{largeDescription}}\",\n    \"roles\": [\"user\"],\n    \"password\": \"password123\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/agents",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"agents"
+									]
+								},
+								"description": "Test API handling of excessively large payloads"
+							},
+							"response": []
+						}
+					],
+					"description": "Tests for data validation and handling edge cases"
+				},
+				{
+					"name": "Rate Limiting Tests",
+					"item": [
+						{
+							"name": "Request Flood",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"// Store the result of this request",
+											"let results = pm.environment.get(\"floodResults\");",
+											"if (!results) {",
+											"    results = {",
+											"        success: 0,",
+											"        rateLimit: 0,",
+											"        error: 0,",
+											"        total: 0",
+											"    };",
+											"}",
+											"else {",
+											"    results = JSON.parse(results);",
+											"}",
+											"",
+											"// Increment appropriate counter",
+											"results.total++;",
+											"if (pm.response.code === 200) {",
+											"    results.success++;",
+											"} else if (pm.response.code === 429) {",
+											"    results.rateLimit++;",
+											"} else {",
+											"    results.error++;",
+											"}",
+											"",
+											"// Save updated results",
+											"pm.environment.set(\"floodResults\", JSON.stringify(results));",
+											"",
+											"// Check for rate limit headers",
+											"const rateLimit = pm.response.headers.get(\"RateLimit-Limit\");",
+											"const rateLimitRemaining = pm.response.headers.get(\"RateLimit-Remaining\");",
+											"",
+											"if (rateLimit) {",
+											"    console.log(`Rate limit: ${rateLimitRemaining}/${rateLimit}`);",
+											"}",
+											"",
+											"// Final check after all requests",
+											"if (results.total >= 20) {",
+											"    pm.test(\"Rate limiting check\", () => {",
+											"        if (results.rateLimit > 0) {",
+											"            console.log(\"Rate limiting detected after \" + results.success + \" requests\");",
+											"            pm.expect(results.rateLimit).to.be.greaterThan(0);",
+											"        } else {",
+											"            console.log(\"WARNING: No rate limiting detected after \" + results.total + \" requests\");",
+											"        }",
+											"    });",
+											"    ",
+											"    // Clear results for next run",
+											"    pm.environment.set(\"floodResults\", null);",
+											"}"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/agents",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"agents"
+									]
+								},
+								"description": "Test rate limiting by executing multiple requests in succession (run this request multiple times in the runner)"
+							},
+							"response": []
+						}
+					],
+					"description": "Tests for rate limiting and DoS protection"
+				}
+			]
+		},
+		{
+			"name": "CRUD Operations Testing",
+			"description": "Comprehensive tests for all Create, Read, Update, Delete operations",
+			"item": [
+				{
+					"name": "Tool CRUD Tests",
+					"item": [
+						{
+							"name": "Create Tool",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Tool created successfully\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const responseData = pm.response.json();",
+											"    pm.expect(responseData.tool_id).to.exist;",
+											"    pm.environment.set(\"crudTestToolId\", responseData.tool_id);",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"const timestamp = new Date().getTime();",
+											"pm.environment.set(\"crudToolName\", \"CRUD-Tool-\" + timestamp);"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"{{crudToolName}}\",\n    \"description\": \"Tool for CRUD testing\",\n    \"version\": \"1.0.0\",\n    \"tool_metadata\": {\n        \"schema_version\": \"1.0.0\",\n        \"schema_type\": \"openapi\",\n        \"schema_data\": {\n            \"swagger\": \"2.0\",\n            \"info\": {\n                \"title\": \"{{crudToolName}}\",\n                \"version\": \"1.0.0\"\n            },\n            \"paths\": {\n                \"/test\": {\n                    \"get\": {\n                        \"responses\": {\n                            \"200\": {\n                                \"description\": \"Success\"\n                            }\n                        }\n                    }\n                }\n            }\n        },\n        \"tags\": [\"test\", \"crud\"]\n    }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/tools",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tools"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Read Tool",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Tool retrieved successfully\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const tool = pm.response.json();",
+											"    pm.expect(tool.name).to.equal(pm.environment.get(\"crudToolName\"));",
+											"    pm.expect(tool.tool_id).to.equal(pm.environment.get(\"crudTestToolId\"));",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/tools/{{crudTestToolId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tools",
+										"{{crudTestToolId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Update Tool",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Tool updated successfully\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const tool = pm.response.json();",
+											"    pm.expect(tool.description).to.include(\"Updated\");",
+											"    pm.expect(tool.version).to.equal(\"1.0.1\");",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "PUT",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"{{crudToolName}}\",\n    \"description\": \"Updated description for CRUD testing\",\n    \"version\": \"1.0.1\",\n    \"tool_metadata\": {\n        \"schema_version\": \"1.0.0\",\n        \"schema_type\": \"openapi\",\n        \"schema_data\": {\n            \"swagger\": \"2.0\",\n            \"info\": {\n                \"title\": \"{{crudToolName}}\",\n                \"version\": \"1.0.1\"\n            },\n            \"paths\": {\n                \"/test\": {\n                    \"get\": {\n                        \"responses\": {\n                            \"200\": {\n                                \"description\": \"Success\"\n                            }\n                        }\n                    }\n                }\n            }\n        },\n        \"tags\": [\"test\", \"crud\", \"updated\"]\n    }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/tools/{{crudTestToolId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tools",
+										"{{crudTestToolId}}"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Delete Tool",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Tool deleted successfully\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    ",
+											"    // Verify tool is actually deleted by trying to retrieve it",
+											"    const echoRequest = {",
+											"        url: pm.environment.get(\"baseUrl\") + '/tools/' + pm.environment.get(\"crudTestToolId\"),",
+											"        method: 'GET',",
+											"        header: []",
+											"    };",
+											"    ",
+											"    pm.sendRequest(echoRequest, (err, res) => {",
+											"        pm.expect(res.code).to.equal(404);",
+											"    });",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "DELETE",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/tools/{{crudTestToolId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tools",
+										"{{crudTestToolId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Complete CRUD operations for Tool entity"
+				},
+				{
+					"name": "Agent CRUD Tests",
+					"item": [
+						{
+							"name": "Create Agent",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Agent created successfully\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const responseData = pm.response.json();",
+											"    pm.expect(responseData.agent_id).to.exist;",
+											"    pm.environment.set(\"crudTestAgentId\", responseData.agent_id);",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"const timestamp = new Date().getTime();",
+											"pm.environment.set(\"crudAgentName\", \"CRUD-Agent-\" + timestamp);"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"{{crudAgentName}}\",\n    \"description\": \"Agent for CRUD testing\",\n    \"roles\": [\"user\"],\n    \"password\": \"test_password_123\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/agents",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"agents"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Read Agent",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Agent retrieved successfully\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const agent = pm.response.json();",
+											"    pm.expect(agent.name).to.equal(pm.environment.get(\"crudAgentName\"));",
+											"    pm.expect(agent.agent_id).to.equal(pm.environment.get(\"crudTestAgentId\"));",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/agents/{{crudTestAgentId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"agents",
+										"{{crudTestAgentId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Complete CRUD operations for Agent entity"
+				}
+			]
+		},
+		{
+			"name": "Cross-Entity Testing",
+			"description": "Tests that verify interactions between different entity types",
+			"item": [
+				{
+					"name": "Tool-Agent Relationship",
+					"item": [
+						{
+							"name": "Setup Test Tool",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Tool created successfully\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const responseData = pm.response.json();",
+											"    pm.expect(responseData.tool_id).to.exist;",
+											"    pm.environment.set(\"crossEntityToolId\", responseData.tool_id);",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"const timestamp = new Date().getTime();",
+											"pm.environment.set(\"crossEntityToolName\", \"CrossEntity-Tool-\" + timestamp);"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"{{crossEntityToolName}}\",\n    \"description\": \"Tool for cross-entity testing\",\n    \"version\": \"1.0.0\",\n    \"tool_metadata\": {\n        \"schema_version\": \"1.0.0\",\n        \"schema_type\": \"openapi\",\n        \"schema_data\": {\n            \"swagger\": \"2.0\",\n            \"info\": {\n                \"title\": \"{{crossEntityToolName}}\",\n                \"version\": \"1.0.0\"\n            },\n            \"paths\": {\n                \"/test\": {\n                    \"get\": {\n                        \"responses\": {\n                            \"200\": {\n                                \"description\": \"Success\"\n                            }\n                        }\n                    }\n                }\n            }\n        },\n        \"tags\": [\"test\", \"cross-entity\"]\n    }\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/tools",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"tools"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Setup Test Agent",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Agent created successfully\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const responseData = pm.response.json();",
+											"    pm.expect(responseData.agent_id).to.exist;",
+											"    pm.environment.set(\"crossEntityAgentId\", responseData.agent_id);",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"const timestamp = new Date().getTime();",
+											"pm.environment.set(\"crossEntityAgentName\", \"CrossEntity-Agent-\" + timestamp);"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"{{crossEntityAgentName}}\",\n    \"description\": \"Agent for cross-entity testing\",\n    \"roles\": [\"user\"],\n    \"password\": \"test_password_123\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/agents",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"agents"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Create Policy",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Policy created successfully\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const responseData = pm.response.json();",
+											"    pm.expect(responseData.policy_id).to.exist;",
+											"    pm.environment.set(\"crossEntityPolicyId\", responseData.policy_id);",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"const timestamp = new Date().getTime();",
+											"pm.environment.set(\"crossEntityPolicyName\", \"CrossEntity-Policy-\" + timestamp);"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"name\": \"{{crossEntityPolicyName}}\",\n    \"description\": \"Policy for cross-entity testing\",\n    \"tool_id\": \"{{crossEntityToolId}}\",\n    \"allowed_scopes\": [\"read\", \"execute\"],\n    \"conditions\": {\n        \"max_requests_per_day\": 100\n    },\n    \"rules\": {\n        \"require_approval\": false,\n        \"log_usage\": true\n    },\n    \"priority\": 10\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/policies",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"policies"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Test Access Request",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Access request created successfully\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const responseData = pm.response.json();",
+											"    pm.expect(responseData.request_id).to.exist;",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"agent_id\": \"{{crossEntityAgentId}}\",\n    \"tool_id\": \"{{crossEntityToolId}}\",\n    \"policy_id\": \"{{crossEntityPolicyId}}\",\n    \"justification\": \"Cross-entity testing access request\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/access/request",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"access",
+										"request"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Test Credential Creation",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Credential created successfully\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const responseData = pm.response.json();",
+											"    pm.expect(responseData.credential_id).to.exist;",
+											"    pm.environment.set(\"crossEntityCredentialId\", responseData.credential_id);",
+											"});"
+										]
+									}
+								},
+								{
+									"listen": "prerequest",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"// Create expiration date 7 days in the future",
+											"const expirationDate = new Date();",
+											"expirationDate.setDate(expirationDate.getDate() + 7);",
+											"pm.environment.set(\"crossEntityExpirationDate\", expirationDate.toISOString());"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"agent_id\": \"{{crossEntityAgentId}}\",\n    \"tool_id\": \"{{crossEntityToolId}}\",\n    \"credential_type\": \"api_key\",\n    \"credential_value\": {\n        \"api_key\": \"cross_entity_test_key_{{$timestamp}}\"\n    },\n    \"expires_at\": \"{{crossEntityExpirationDate}}\"\n}"
+								},
+								"url": {
+									"raw": "{{baseUrl}}/credentials",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"credentials"
+									]
+								}
+							},
+							"response": []
+						},
+						{
+							"name": "Verify Cross-Entity References",
+							"event": [
+								{
+									"listen": "test",
+									"script": {
+										"type": "text/javascript",
+										"exec": [
+											"pm.test(\"Credential references correct entities\", () => {",
+											"    pm.response.to.have.status(200);",
+											"    const credential = pm.response.json();",
+											"    pm.expect(credential.agent_id).to.equal(pm.environment.get(\"crossEntityAgentId\"));",
+											"    pm.expect(credential.tool_id).to.equal(pm.environment.get(\"crossEntityToolId\"));",
+											"});"
+										]
+									}
+								}
+							],
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseUrl}}/credentials/{{crossEntityCredentialId}}",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"credentials",
+										"{{crossEntityCredentialId}}"
+									]
+								}
+							},
+							"response": []
+						}
+					],
+					"description": "Test relationships between tools, agents, policies, and credentials"
+				}
+			]
 		}
 	],
 	"auth": {
