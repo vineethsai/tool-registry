@@ -1,18 +1,19 @@
 {
 	"id": "a1b2c3d4-e5f6-g7h8-i9j0-k1l2m3n4o5p6",
-	"name": "Tool Registry API Environment",
+	"name": "Tool Registry API Environment (Auth Disabled)",
 	"values": [
 		{
 			"key": "baseUrl",
-			"value": "http://localhost:8000/api/v1",
+			"value": "http://localhost:8000",
 			"type": "default",
 			"enabled": true
 		},
 		{
 			"key": "accessToken",
-			"value": "",
+			"value": "not_required_authentication_disabled",
 			"type": "default",
-			"enabled": true
+			"enabled": false,
+			"description": "Not required - Authentication has been disabled"
 		},
 		{
 			"key": "testToolId",

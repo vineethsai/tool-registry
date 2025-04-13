@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "f8a9b2c3-d4e5-6f7a-8b9c-0d1e2f3a4b5c",
 		"name": "Tool Registry API",
-		"description": "A comprehensive collection to test the Tool Registry API including authentication, tools, agents, policies, credentials, and monitoring features.",
+		"description": "A comprehensive collection to test the Tool Registry API including authentication, tools, agents, policies, credentials, and monitoring features. **Note: Authentication has been disabled for all endpoints.**",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
 	},
 	"item": [
@@ -962,14 +962,7 @@
 		}
 	],
 	"auth": {
-		"type": "bearer",
-		"bearer": [
-			{
-				"key": "token",
-				"value": "{{accessToken}}",
-				"type": "string"
-			}
-		]
+		"type": "noauth"
 	},
 	"event": [
 		{
