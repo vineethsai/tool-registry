@@ -47,7 +47,7 @@ class AuthorizationService:
         logger.info(f"Evaluating access for agent {agent.agent_id} to tool {tool.tool_id}")
         
         # Check if agent is admin
-        if "admin" in agent.roles:
+        if hasattr(agent, 'roles') and "admin" in agent.roles:
             logger.info(f"Admin access granted for agent {agent.agent_id}")
             return {
                 "granted": True,
@@ -59,15 +59,19 @@ class AuthorizationService:
         # Get relevant policies
         relevant_policies = []
         if hasattr(tool, 'policies') and tool.policies:
+            logger.info(f"Found {len(tool.policies)} policies linked to tool")
             for policy in tool.policies:
                 policy_id = str(policy.policy_id)
+                logger.info(f"Checking policy {policy_id}")
                 if policy_id in self.policies:
                     # Use the policy from our store, not the one from the relationship
                     relevant_policies.append(self.policies[policy_id])
+                    logger.info(f"Using policy {policy_id} from store")
                 else:
                     # If not in our store yet, add it
                     self.policies[policy_id] = policy
                     relevant_policies.append(policy)
+                    logger.info(f"Added policy {policy_id} to store")
         
         logger.info(f"Found {len(relevant_policies)} relevant policies for tool {tool.tool_id}")
         
@@ -83,13 +87,27 @@ class AuthorizationService:
         
         # Evaluate each policy
         for policy in relevant_policies:
-            if not self._policy_applies(policy, agent, tool):
-                logger.debug(f"Policy {policy.policy_id} does not apply to agent {agent.agent_id}")
+            logger.info(f"Evaluating policy {policy.policy_id}")
+            
+            # Explicitly check if policy applies
+            policy_applies = self._policy_applies(policy, agent, tool)
+            logger.info(f"Policy {policy.policy_id} applies: {policy_applies}")
+            
+            if not policy_applies:
+                logger.info(f"Policy {policy.policy_id} does not apply to agent {agent.agent_id}")
                 continue
             
+            # Since policy applies, evaluate its rules
+            logger.info(f"Evaluating rules for policy {policy.policy_id}")
             policy_result = self._evaluate_policy_rules(policy, agent, tool, context)
+            logger.info(f"Policy {policy.policy_id} evaluation result: {policy_result}")
+            
             if policy_result["granted"]:
                 logger.info(f"Access granted by policy {policy.policy_id} for agent {agent.agent_id}")
+                return policy_result
+            else:
+                logger.info(f"Access denied by policy {policy.policy_id} for agent {agent.agent_id}: {policy_result['reason']}")
+                # Return the denial result immediately
                 return policy_result
         
         logger.info(f"No applicable policies found for agent {agent.agent_id}")
@@ -114,6 +132,15 @@ class AuthorizationService:
         """
         rules = policy.rules
         
+        # First, log all the relevant details for debugging
+        logger.info(f"Checking if policy {policy.policy_id} applies for agent {agent.agent_id} and tool {tool.tool_id}")
+        logger.info(f"Agent roles: {agent.roles}")
+        logger.info(f"Policy requires roles: {rules.get('roles', [])}")
+        logger.info(f"Tool ID: {tool.tool_id}")
+        logger.info(f"Policy requires tool IDs: {rules.get('tool_ids', [])}")
+        logger.info(f"Tool tags: {getattr(tool, 'tags', [])}")
+        logger.info(f"Policy requires tool tags: {rules.get('tool_tags', [])}")
+        
         # Check roles
         if "roles" in rules and not any(role in agent.roles for role in rules["roles"]):
             logger.info(f"Policy {policy.policy_id} does not apply due to roles mismatch: agent roles {agent.roles}, policy requires one of {rules['roles']}")
@@ -124,10 +151,12 @@ class AuthorizationService:
             logger.info(f"Policy {policy.policy_id} does not apply due to tool ID mismatch: tool ID {tool.tool_id}, policy requires one of {rules['tool_ids']}")
             return False
         
-        # Check tool tags
-        if "tool_tags" in rules and not any(tag in tool.tags for tag in rules["tool_tags"]):
-            logger.info(f"Policy {policy.policy_id} does not apply due to tool tags mismatch: tool tags {tool.tags}, policy requires one of {rules['tool_tags']}")
-            return False
+        # Check tool tags - make sure to handle the case where tool might not have tags attribute
+        if "tool_tags" in rules:
+            tool_tags = getattr(tool, 'tags', [])
+            if not tool_tags or not any(tag in tool_tags for tag in rules["tool_tags"]):
+                logger.info(f"Policy {policy.policy_id} does not apply due to tool tags mismatch: tool tags {tool_tags}, policy requires one of {rules['tool_tags']}")
+                return False
         
         logger.info(f"Policy {policy.policy_id} applies to agent {agent.agent_id} and tool {tool.tool_id}")
         return True
@@ -190,7 +219,7 @@ class AuthorizationService:
                     }
             
             # Check request count limits
-            if "max_requests" in limits and agent.request_count >= limits["max_requests"]:
+            if "max_requests" in limits and hasattr(agent, 'request_count') and agent.request_count >= limits["max_requests"]:
                 logger.info(f"Request count limit exceeded for policy {policy.policy_id}")
                 return {
                     "granted": False,

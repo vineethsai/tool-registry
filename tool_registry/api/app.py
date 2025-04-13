@@ -178,14 +178,34 @@ async def register_tool(tool_request: ToolCreateRequest, token: str = Depends(oa
             detail="Not authorized to register tools"
         )
     # Create a new Tool object from the request
+    
+    # Convert Pydantic ToolMetadataCreate to SQLAlchemy model
+    from tool_registry.models.tool_metadata import ToolMetadata
+    metadata = ToolMetadata(
+        schema_version=tool_request.tool_metadata.schema_version,
+        schema_type=tool_request.tool_metadata.schema_type,
+        schema_data=tool_request.tool_metadata.schema_data,
+        inputs=tool_request.tool_metadata.inputs,
+        outputs=tool_request.tool_metadata.outputs,
+        documentation_url=tool_request.tool_metadata.documentation_url,
+        provider=tool_request.tool_metadata.provider,
+        tags=tool_request.tool_metadata.tags
+    )
+    
     tool = Tool(
         tool_id=uuid4(),
         name=tool_request.name,
         description=tool_request.description,
         version=tool_request.version,
-        tool_metadata_rel=tool_request.tool_metadata,
-        endpoint=f"/api/tools/{tool_request.name}",
-        auth_required=True
+        tool_metadata_rel=metadata,
+        api_endpoint=f"/api/tools/{tool_request.name}",
+        auth_method="API_KEY",
+        auth_config={},
+        params={},
+        tags=[],
+        owner_id=agent.agent_id,
+        allowed_scopes=["read"],
+        is_active=True
     )
     tool_id = await tool_registry.register_tool(tool)
     # Return the tool that was registered
@@ -269,9 +289,15 @@ async def update_tool(tool_id: UUID, tool_request: ToolCreateRequest, token: str
         name=tool_request.name,
         description=tool_request.description,
         version=tool_request.version,
-        tool_metadata_rel=tool_request.tool_metadata,
-        endpoint=f"/api/tools/{tool_request.name}",
-        auth_required=True
+        tool_metadata_rel=existing_tool.tool_metadata,
+        api_endpoint=f"/api/tools/{tool_request.name}",
+        auth_method="API_KEY",
+        auth_config={},
+        params={},
+        tags=[],
+        owner_id=agent.agent_id,
+        allowed_scopes=["read"],
+        is_active=True
     )
     await tool_registry.update_tool(updated_tool)
     return updated_tool

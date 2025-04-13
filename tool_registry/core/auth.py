@@ -184,4 +184,13 @@ class AuthService:
     
     def check_role(self, agent: AgentAuth, role: str) -> bool:
         """Check if an agent has a specific role."""
-        return role in agent.roles 
+        return role in agent.roles
+        
+    def create_token(self, agent: AgentAuth) -> str:
+        """Create a JWT token for the authenticated agent."""
+        token_data = {
+            "sub": str(agent.agent_id),
+            "exp": datetime.utcnow() + timedelta(minutes=30)
+        }
+        
+        return jwt.encode(token_data, self.secret_key, algorithm=self.algorithm) 
