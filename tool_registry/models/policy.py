@@ -5,11 +5,11 @@ import uuid
 from uuid import UUID
 
 from sqlalchemy import Column, String, DateTime, Boolean, Integer, JSON, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID as PUUID
 from sqlalchemy.orm import relationship
 
 from ..core.database import Base
 from .tool import tool_policy_association
+from .base import UUIDType
 
 class Policy(Base):
     """SQLAlchemy model for policies in the Tool Registry system."""
@@ -17,7 +17,7 @@ class Policy(Base):
     __tablename__ = 'policies'
     __table_args__ = {'extend_existing': True}
 
-    policy_id = Column(PUUID(as_uuid=True), primary_key=True)
+    policy_id = Column(UUIDType(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
     description = Column(String)
     rules = Column(JSON, nullable=False, default=dict())
@@ -27,7 +27,7 @@ class Policy(Base):
     is_active = Column(Boolean, nullable=False, default=True)
     
     # Foreign keys
-    created_by = Column(PUUID(as_uuid=True), ForeignKey('agents.agent_id'), nullable=False)
+    created_by = Column(UUIDType(as_uuid=True), ForeignKey('agents.agent_id'), nullable=False)
     
     # Relationships
     creator = relationship("Agent", foreign_keys=[created_by])

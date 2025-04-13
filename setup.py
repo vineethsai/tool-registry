@@ -8,6 +8,7 @@ setup(
         "fastapi",
         "uvicorn",
         "pydantic",
+        "pydantic-settings",
         "python-jose[cryptography]",
         "passlib[bcrypt]",
         "python-multipart",
@@ -17,5 +18,7 @@ setup(
         "psycopg2-binary",
         "sqlalchemy",
         "python-dotenv",
+        "email-validator",
     ],
+    python_requires=">=3.8",
 ) 

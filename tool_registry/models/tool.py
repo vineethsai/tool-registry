@@ -4,17 +4,17 @@ from uuid import UUID
 from datetime import datetime
 from sqlalchemy import Column, String, JSON, DateTime, ForeignKey, Boolean, Table
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID as PUUID
 import uuid
 
 from ..core.database import Base
+from .base import UUIDType
 
 # Association table for tool-policy relationship
 tool_policy_association = Table(
     'tool_policy_association',
     Base.metadata,
-    Column('tool_id', PUUID(as_uuid=True), ForeignKey('tools.tool_id')),
-    Column('policy_id', PUUID(as_uuid=True), ForeignKey('policies.policy_id')),
+    Column('tool_id', UUIDType(as_uuid=True), ForeignKey('tools.tool_id')),
+    Column('policy_id', UUIDType(as_uuid=True), ForeignKey('policies.policy_id')),
     extend_existing=True
 )
 
@@ -23,7 +23,7 @@ class Tool(Base):
     __tablename__ = 'tools'
     __table_args__ = {'extend_existing': True}
 
-    tool_id = Column(PUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tool_id = Column(UUIDType(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     api_endpoint = Column(String, nullable=False)
@@ -38,7 +38,7 @@ class Tool(Base):
     allowed_scopes = Column(JSON, default=list())
     
     # Foreign keys
-    owner_id = Column(PUUID(as_uuid=True), ForeignKey('agents.agent_id'), nullable=False)
+    owner_id = Column(UUIDType(as_uuid=True), ForeignKey('agents.agent_id'), nullable=False)
     
     # Relationships
     owner = relationship("Agent", back_populates="owned_tools")

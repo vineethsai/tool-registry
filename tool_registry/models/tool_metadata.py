@@ -4,18 +4,18 @@ from uuid import UUID
 from datetime import datetime
 from sqlalchemy import Column, String, JSON, DateTime, ForeignKey, Boolean, Integer
 from sqlalchemy.orm import relationship
-from sqlalchemy.dialects.postgresql import UUID as PUUID
 import uuid
 
 from ..core.database import Base
+from .base import UUIDType
 
 class ToolMetadata(Base):
     """SQLAlchemy model for tool metadata in the Tool Registry system."""
     __tablename__ = 'tool_metadata'
     __table_args__ = {'extend_existing': True}
 
-    metadata_id = Column(PUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    tool_id = Column(PUUID(as_uuid=True), ForeignKey('tools.tool_id'), nullable=False)
+    metadata_id = Column(UUIDType(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    tool_id = Column(UUIDType(as_uuid=True), ForeignKey('tools.tool_id'), nullable=False)
     
     # Schema information
     schema_version = Column(String, nullable=False, default="1.0")
