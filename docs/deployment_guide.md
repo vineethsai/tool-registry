@@ -1,517 +1,153 @@
 # Tool Registry Deployment Guide
 
-This guide provides detailed instructions for deploying the Tool Registry system in various environments.
+> **WARNING**: Authentication is currently disabled for development purposes. Before deploying to production, you MUST re-enable authentication by reverting the changes in `tool_registry/api/app.py` that replaced `get_current_agent` with `get_default_admin_agent`.
 
-## Deployment Options
+This guide provides instructions for deploying the Tool Registry system in various environments.
 
-### Local Development Environment
+## Local Development Setup
 
-For local development and testing:
+### Prerequisites
 
-```bash
-# Clone the repository
-git clone https://github.com/example/tool-registry.git
-cd tool-registry
+- Python 3.9+
+- PostgreSQL
+- Redis (optional, for rate limiting)
 
-# Create and activate virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+### Installation
 
-# Install dependencies
-pip install -r requirements.txt
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/tool-registry.git
+   cd tool-registry
+   ```
 
-# Set up database
-export DATABASE_URL="postgresql://localhost/tool_registry_dev"
-python -m tool_registry.db.init_db
+2. Create and activate a virtual environment:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   ```
 
-# Run the development server
-python -m tool_registry.main
-```
+3. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+4. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   # Edit .env with your configuration
+   ```
+
+5. Initialize the database:
+   ```bash
+   python -m tool_registry.core.database init
+   ```
+
+6. Run the development server:
+   ```bash
+   uvicorn tool_registry.main:app --reload
+   ```
+
+## Configuration Options
+
+Key environment variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_URL` | SQLAlchemy database URL | `sqlite:///./tool_registry.db` |
+| `REDIS_URL` | Redis URL for rate limiting | None |
+| `JWT_SECRET_KEY` | Secret key for JWT tokens | (randomly generated) |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | JWT token expiration time | 30 |
+| `RATE_LIMIT` | API rate limit per minute | 100 |
+| `LOG_LEVEL` | Logging level | `INFO` |
+
+## Production Deployment
 
 ### Docker Deployment
 
-For containerized deployment:
+1. Build the Docker image:
+   ```bash
+   docker build -t tool-registry .
+   ```
 
-```bash
-# Build the Docker image
-docker build -t tool-registry:latest .
-
-# Run the container
-docker run -d \
-  --name tool-registry \
-  -p 8000:8000 \
-  -e DATABASE_URL="postgresql://user:password@db-host/tool_registry" \
-  -e SECRET_KEY="your-secret-key" \
-  -e ENVIRONMENT="production" \
-  tool-registry:latest
-```
-
-Using Docker Compose:
-
-```yaml
-# docker-compose.yml
-version: '3.8'
-
-services:
-  api:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db/tool_registry
-      - SECRET_KEY=your-secret-key
-      - ENVIRONMENT=production
-    depends_on:
-      - db
-    restart: always
-
-  db:
-    image: postgres:13
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=tool_registry
-    restart: always
-
-volumes:
-  postgres_data:
-```
-
-Run with:
-
-```bash
-docker-compose up -d
-```
+2. Run with Docker Compose:
+   ```bash
+   docker-compose up -d
+   ```
 
 ### Kubernetes Deployment
 
-For production-grade cloud deployment:
+1. Apply Kubernetes configurations:
+   ```bash
+   kubectl apply -f k8s/
+   ```
 
-```yaml
-# kubernetes/deployment.yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: tool-registry
-  labels:
-    app: tool-registry
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: tool-registry
-  template:
-    metadata:
-      labels:
-        app: tool-registry
-    spec:
-      containers:
-      - name: tool-registry
-        image: tool-registry:latest
-        ports:
-        - containerPort: 8000
-        env:
-        - name: DATABASE_URL
-          valueFrom:
-            secretKeyRef:
-              name: tool-registry-secrets
-              key: database-url
-        - name: SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: tool-registry-secrets
-              key: secret-key
-        - name: ENVIRONMENT
-          value: production
-        resources:
-          limits:
-            cpu: "1"
-            memory: "1Gi"
-          requests:
-            cpu: "500m"
-            memory: "512Mi"
-        livenessProbe:
-          httpGet:
-            path: /health
-            port: 8000
-          initialDelaySeconds: 30
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /health
-            port: 8000
-          initialDelaySeconds: 5
-          periodSeconds: 5
-```
+2. Check deployment status:
+   ```bash
+   kubectl get pods -n tool-registry
+   ```
 
-Service configuration:
+### Cloud Provider Deployments
 
-```yaml
-# kubernetes/service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: tool-registry
-spec:
-  selector:
-    app: tool-registry
-  ports:
-  - port: 80
-    targetPort: 8000
-  type: ClusterIP
-```
+#### AWS
 
-Apply with:
+1. Set up an RDS PostgreSQL instance
+2. Configure Elastic Beanstalk or ECS
+3. Use CloudFront for caching and SSL
 
-```bash
-kubectl apply -f kubernetes/deployment.yaml
-kubectl apply -f kubernetes/service.yaml
-```
+#### Google Cloud
 
-## Environment Configuration
+1. Set up Cloud SQL
+2. Deploy to Cloud Run or GKE
+3. Configure Cloud CDN
 
-### Required Environment Variables
+## Security Considerations
 
-| Variable | Description | Default | Required |
-|----------|-------------|---------|----------|
-| `DATABASE_URL` | PostgreSQL connection URL | - | Yes |
-| `SECRET_KEY` | Secret key for JWT signing | - | Yes |
-| `ENVIRONMENT` | Deployment environment | development | No |
-| `LOG_LEVEL` | Logging level | INFO | No |
-| `PORT` | Server port | 8000 | No |
-| `ALLOWED_ORIGINS` | CORS allowed origins | * | No |
-| `JWT_EXPIRATION` | JWT token expiration in seconds | 3600 | No |
-| `RATE_LIMIT_PER_MINUTE` | API rate limit per minute | 100 | No |
+> **WARNING**: Authentication is currently disabled for development purposes. Before deploying to production, you MUST re-enable authentication by reverting the changes in `tool_registry/api/app.py` that replaced `get_current_agent` with `get_default_admin_agent`.
 
-### Database Configuration
-
-The Tool Registry requires PostgreSQL 12+ as its database. Set up the database:
-
-```sql
-CREATE DATABASE tool_registry;
-CREATE USER tool_registry_user WITH ENCRYPTED PASSWORD 'your_password';
-GRANT ALL PRIVILEGES ON DATABASE tool_registry TO tool_registry_user;
-```
-
-Update the `DATABASE_URL` environment variable:
-
-```
-DATABASE_URL=postgresql://tool_registry_user:your_password@localhost/tool_registry
-```
-
-### TLS/SSL Configuration
-
-For production deployments, enable TLS:
-
-1. Using Nginx as a reverse proxy:
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name tool-registry.example.com;
-
-    ssl_certificate /path/to/certificate.crt;
-    ssl_certificate_key /path/to/private.key;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-
-    location / {
-        proxy_pass http://localhost:8000;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-2. Using Traefik in Kubernetes:
-
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: tool-registry-ingress
-  annotations:
-    kubernetes.io/ingress.class: "traefik"
-    traefik.ingress.kubernetes.io/router.tls: "true"
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-spec:
-  tls:
-  - hosts:
-    - tool-registry.example.com
-    secretName: tool-registry-tls
-  rules:
-  - host: tool-registry.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: tool-registry
-            port:
-              number: 80
-```
-
-## Scaling Configuration
-
-### Horizontal Scaling
-
-For horizontal scaling with multiple instances:
-
-1. Ensure the database can handle multiple connections
-2. Use a load balancer to distribute traffic
-3. Configure session persistence if needed
-
-Kubernetes scaling example:
-
-```bash
-kubectl scale deployment tool-registry --replicas=5
-```
-
-Or set up autoscaling:
-
-```yaml
-apiVersion: autoscaling/v2
-kind: HorizontalPodAutoscaler
-metadata:
-  name: tool-registry-hpa
-spec:
-  scaleTargetRef:
-    apiVersion: apps/v1
-    kind: Deployment
-    name: tool-registry
-  minReplicas: 3
-  maxReplicas: 10
-  metrics:
-  - type: Resource
-    resource:
-      name: cpu
-      target:
-        type: Utilization
-        averageUtilization: 70
-```
-
-### Database Scaling
-
-For high-availability database setup:
-
-1. **Read Replicas**: Configure PostgreSQL read replicas
-2. **Connection Pooling**: Use PgBouncer for connection pooling
-3. **Sharding**: For very large deployments, consider database sharding
-
-## Backup and Disaster Recovery
-
-### Database Backups
-
-Schedule regular database backups:
-
-```bash
-# Automated backup script example
-pg_dump -U postgres tool_registry > /backups/tool_registry_$(date +%Y%m%d_%H%M%S).sql
-```
-
-Or using a Kubernetes CronJob:
-
-```yaml
-apiVersion: batch/v1
-kind: CronJob
-metadata:
-  name: db-backup
-spec:
-  schedule: "0 2 * * *"  # Every day at 2 AM
-  jobTemplate:
-    spec:
-      template:
-        spec:
-          containers:
-          - name: db-backup
-            image: postgres:13
-            command:
-            - /bin/sh
-            - -c
-            - pg_dump -h db -U postgres -d tool_registry > /backups/tool_registry_$(date +%Y%m%d).sql
-            volumeMounts:
-            - name: backup-volume
-              mountPath: /backups
-          volumes:
-          - name: backup-volume
-            persistentVolumeClaim:
-              claimName: backup-pvc
-          restartPolicy: OnFailure
-```
-
-### Disaster Recovery
-
-Create a disaster recovery plan:
-
-1. **Regular Backups**: Store backups in multiple locations
-2. **Backup Testing**: Regularly test backup restoration
-3. **Failover Procedure**: Document the process for failover
-4. **Recovery Time Objective (RTO)**: Define acceptable downtime
-5. **Recovery Point Objective (RPO)**: Define acceptable data loss
+See the [Security Guide](security_guide.md) for detailed security recommendations.
 
 ## Monitoring and Logging
 
-### Prometheus Metrics
+1. Implement health checks:
+   ```
+   GET /health
+   ```
 
-The Tool Registry exposes metrics at `/metrics`:
+2. Set up logging with your preferred provider (CloudWatch, Stackdriver, etc.)
 
-```yaml
-# prometheus.yml
-scrape_configs:
-  - job_name: 'tool-registry'
-    scrape_interval: 15s
-    static_configs:
-      - targets: ['tool-registry:8000']
-```
+3. Configure alerts for critical errors and performance issues
 
-### Log Aggregation
+## Scaling Considerations
 
-Configure centralized logging:
+- Database connection pooling
+- Horizontal scaling with load balancers
+- Redis caching for frequently accessed data
+- CDN for static assets
 
-1. **ELK Stack**: Elasticsearch, Logstash, Kibana
-2. **Loki**: For Kubernetes environments with Grafana
+## Backup and Recovery
 
-Fluentd configuration example:
-
-```
-<source>
-  @type tail
-  path /var/log/tool-registry.log
-  pos_file /var/log/td-agent/tool-registry.log.pos
-  tag tool-registry
-  <parse>
-    @type json
-  </parse>
-</source>
-
-<match tool-registry>
-  @type elasticsearch
-  host elasticsearch
-  port 9200
-  logstash_format true
-  logstash_prefix tool-registry
-  include_tag_key true
-  type_name access_log
-  tag_key @log_name
-</match>
-```
-
-## Maintenance
-
-### Database Maintenance
-
-Regular database maintenance tasks:
-
-```sql
--- Analyze tables
-ANALYZE VERBOSE;
-
--- Vacuum tables
-VACUUM ANALYZE;
-
--- Reindex
-REINDEX DATABASE tool_registry;
-```
-
-### Application Updates
-
-Process for updating the application:
-
-1. **Backup**: Create a backup before updating
-2. **Testing**: Test the update in a staging environment
-3. **Deployment**: Deploy using a blue-green or canary strategy
-4. **Verification**: Verify the application is working correctly
-5. **Rollback Plan**: Document the rollback procedure
+1. Regular database backups
+2. Point-in-time recovery options
+3. Disaster recovery plan
 
 ## Troubleshooting
 
-Common issues and solutions:
+Common issues:
 
-| Issue | Possible Cause | Solution |
-|-------|----------------|----------|
-| Database connection errors | Incorrect credentials or unreachable database | Verify DATABASE_URL and network connectivity |
-| Server won't start | Port conflict or missing dependencies | Check if port 8000 is in use; verify all dependencies are installed |
-| Authentication failures | Expired JWT token or incorrect secret key | Verify SECRET_KEY and token expiration settings |
-| Rate limiting issues | Misconfigured rate limits | Adjust RATE_LIMIT_PER_MINUTE environment variable |
-| Slow API responses | Database performance or resource constraints | Check database indexes, query performance, and server resources |
+- Database connection errors
+- Redis connection failures
+- JWT token validation issues
+- Rate limiting problems
 
-## Health Checks
+Check logs and the `/health` endpoint for diagnostics.
 
-The `/health` endpoint provides system health information:
+## Updating
 
-```bash
-curl http://localhost:8000/health
-```
+1. Deploy new version
+2. Run database migrations if needed
+3. Monitor for any issues
+4. Have a rollback plan
 
-Response:
+## Support
 
-```json
-{
-  "status": "healthy",
-  "version": "1.2.3",
-  "uptime": 1234567,
-  "db_connection": "connected",
-  "components": {
-    "database": {
-      "status": "healthy",
-      "latency_ms": 5
-    },
-    "api": {
-      "status": "healthy",
-      "requests_per_minute": 250
-    }
-  }
-}
-```
-
-## Advanced Configuration
-
-### Custom Authentication Providers
-
-To integrate with external authentication providers:
-
-1. Implement a custom authentication backend
-2. Configure the AUTH_PROVIDER environment variable
-3. Set the required provider-specific environment variables
-
-Example for OAuth provider:
-
-```
-AUTH_PROVIDER=oauth2
-OAUTH_CLIENT_ID=your-client-id
-OAUTH_CLIENT_SECRET=your-client-secret
-OAUTH_AUTHORIZE_URL=https://auth.example.com/authorize
-OAUTH_TOKEN_URL=https://auth.example.com/token
-```
-
-### API Rate Limiting
-
-Configure advanced rate limiting:
-
-```
-RATE_LIMIT_PER_MINUTE=100
-RATE_LIMIT_PER_HOUR=1000
-RATE_LIMIT_STRATEGY=sliding_window
-RATE_LIMIT_BY_IP=true
-RATE_LIMIT_BY_TOKEN=true
-```
-
-### Custom Database Migrations
-
-For custom database migrations:
-
-```bash
-# Create a new migration
-alembic revision --autogenerate -m "Description of changes"
-
-# Apply migrations
-alembic upgrade head
-
-# Rollback migrations
-alembic downgrade -1
-``` 
+For deployment support, contact support@example.com. 

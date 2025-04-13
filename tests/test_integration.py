@@ -215,12 +215,15 @@ def test_register_tool(client, auth_token):
     assert result["name"] == tool_data["name"]
     assert result["description"] == tool_data["description"]
     assert result["version"] == tool_data["version"]
-    assert result["auth_required"] == True
-    assert "tool_metadata_rel" in result
+    # The auth_required field doesn't exist in the model, check auth_method instead
+    assert "auth_method" in result
+    assert result["auth_method"] == "API_KEY"
+    # Check for metadata field instead of tool_metadata_rel
+    assert "metadata" in result
     # Only check for required fields defined in ToolMetadata class
-    assert "schema_version" in result["tool_metadata_rel"]
-    assert "inputs" in result["tool_metadata_rel"]
-    assert "outputs" in result["tool_metadata_rel"]
+    assert "schema_version" in result["metadata"]
+    assert "inputs" in result["metadata"]
+    assert "outputs" in result["metadata"]
 
 def test_list_tools(client, auth_token):
     """Test listing tools endpoint."""

@@ -1,5 +1,8 @@
 # Tool Registry Security Guide
 
+> **WARNING: AUTHENTICATION DISABLED FOR DEVELOPMENT**  
+> Authentication has been temporarily disabled to facilitate development and testing. Before deploying to production, authentication MUST be re-enabled by reverting the changes in `tool_registry/api/app.py` that replaced `get_current_agent` with `get_default_admin_agent`. See the Authentication Status section below for details.
+
 This document outlines the security architecture, practices, and recommendations for deploying and using the Tool Registry system securely.
 
 ## Security Architecture
@@ -244,4 +247,103 @@ If you discover a security vulnerability:
 3. Provide sufficient information to reproduce the issue
 4. Allow time for the issue to be addressed before public disclosure
 
-The security team will acknowledge receipt within 24 hours and work to address the vulnerability promptly. 
+The security team will acknowledge receipt within 24 hours and work to address the vulnerability promptly.
+
+## Authentication Status
+
+> **IMPORTANT WARNING: AUTHENTICATION IS DISABLED**  
+> Authentication has been intentionally disabled in the current version to facilitate development and testing. This makes the API completely open and accessible without credentials, which presents significant security risks in production environments.
+
+The Tool Registry system is designed with comprehensive authentication and authorization capabilities, but these have been temporarily disabled to allow for easier development and testing. In a production environment, these security features MUST be re-enabled.
+
+### Current Authentication Implementation
+
+In the current implementation:
+- The function `get_current_agent` has been replaced with `get_default_admin_agent`
+- All API endpoints use a default admin agent instead of requiring valid credentials
+- JWT tokens are still generated but not validated for authentication
+- The `/token` endpoint returns a test token without validating credentials
+
+### How to Re-enable Authentication
+
+Before deploying to production, authentication must be re-enabled:
+
+1. Revert the changes in `tool_registry/api/app.py` that replaced `get_current_agent` with `get_default_admin_agent`
+2. Restore proper token validation in the `/token` endpoint
+3. Ensure all endpoints properly depend on the `get_current_agent` function:
+   ```python
+   @app.post("/tools/", response_model=ToolResponse)
+   async def register_tool(
+       tool_request: ToolCreateRequest, 
+       current_agent: AgentResponse = Depends(get_current_agent)
+   ):
+       # Authorization checks
+       # ...
+   ```
+
+## Security Considerations
+
+### Development Environment
+
+In the current configuration:
+
+- **Authentication is completely disabled** for all API endpoints
+- All requests use a default admin agent with full privileges
+- Authorization checks within the API have been bypassed
+- JWT tokens and API keys are still generated but are not validated
+- The default admin agent is used for operations that would normally require admin privileges
+
+### Production Security Recommendations
+
+Before deploying to production, implement the following security measures:
+
+1. **Re-enable Authentication**: Follow the instructions in the Authentication Status section to restore proper authentication
+
+2. **Set Strong Secret Keys**: Configure strong, unique secret keys for JWT signing:
+   ```python
+   SECRET_KEY = os.getenv("JWT_SECRET_KEY")  # Must be set in environment
+   ```
+
+3. **Implement HTTPS**: Always use HTTPS in production with a valid SSL certificate.
+
+4. **Database Security**: Use a secure database connection with strong credentials and limited access.
+
+5. **Rate Limiting**: Implement rate limiting to prevent abuse.
+
+6. **Input Validation**: Ensure all inputs are properly validated.
+
+7. **Logging and Monitoring**: Set up comprehensive logging and monitoring.
+
+## User Authentication Flow
+
+Once authentication is re-enabled, the standard flow will be:
+
+1. Register a user via `/register` endpoint
+2. Authenticate via `/token` endpoint using username/password
+3. Use the JWT token for all subsequent API calls
+4. Optionally create API keys for programmatic access
+
+## API Key Security
+
+When using API keys in production:
+
+- Store API keys securely
+- Rotate keys periodically
+- Set appropriate expiration times
+- Restrict permissions to only what is needed
+- Implement key revocation mechanisms
+
+## Role-Based Access Control
+
+The Tool Registry supports role-based access control:
+
+- `admin`: Full access to all system functions
+- `tool_publisher`: Ability to register and update tools
+- `policy_admin`: Can manage access policies
+- `user`: Basic access to tools with appropriate permissions
+
+## Security Contacts
+
+For security concerns or to report vulnerabilities, please contact:
+
+- Security Team: security@example.com 

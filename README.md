@@ -2,6 +2,9 @@
 
 Tool Registry is a comprehensive system for managing, securing, and controlling access to AI tools and services. It enables organizations to track, govern, and monitor tool usage in AI applications.
 
+> **IMPORTANT WARNING: AUTHENTICATION IS DISABLED**  
+> Authentication has been temporarily disabled to facilitate development and testing. The API is currently accessible without credentials. Before deploying to production, authentication MUST be re-enabled. See the [Security Guide](docs/security_guide.md) for details.
+
 ## Features
 
 - **Tool Management**: Register, update, and delete tools with detailed metadata

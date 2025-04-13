@@ -18,35 +18,29 @@ https://your-domain.com/api/v1
 
 ## Authentication
 
-Most endpoints require authentication using JWT bearer tokens:
+> **IMPORTANT NOTE**: Authentication is currently disabled for development purposes. API endpoints can be accessed without authentication tokens. The credential management system remains in place but is not enforced.
+
+The Tool Registry API uses JWT-based authentication. To authenticate:
+
+While authentication is disabled, the following endpoints still exist to maintain API compatibility:
 
 ```
-Authorization: Bearer <token>
+POST /token
+POST /auth/api-key
 ```
 
-To obtain a token, use the authentication endpoint:
+Both will return a dummy token that can be used in subsequent requests if needed:
 
-```
-POST /auth/token
-```
-
-Request body (form data):
-```
-username: your_username
-password: your_password
-```
-
-Response:
 ```json
 {
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "access_token": "test_token",
   "token_type": "bearer"
 }
 ```
 
 ### Self-Registration
 
-Register as a new user without requiring admin privileges:
+Register as a new user:
 
 ```
 POST /register
@@ -60,18 +54,6 @@ Request body:
   "password": "secure_password",
   "name": "New User",
   "organization": "Example Org"
-}
-```
-
-Response:
-```json
-{
-  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "name": "New User",
-  "roles": ["user"],
-  "permissions": ["access_tool:public"],
-  "created_at": "2023-01-15T14:30:00Z",
-  "updated_at": "2023-01-15T14:30:00Z"
 }
 ```
 
@@ -90,38 +72,6 @@ Request body:
   "description": "API key for my application",
   "expires_in_days": 90,
   "permissions": ["access_tool:public"]
-}
-```
-
-Response:
-```json
-{
-  "key_id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "api_key": "tr_a1b2c3d4e5f6g7h8i9j0...",
-  "name": "My Application Key",
-  "expires_at": "2023-04-15T14:30:00Z",
-  "created_at": "2023-01-15T14:30:00Z"
-}
-```
-
-### Authenticate with API Key
-
-Obtain a JWT token using an API key:
-
-```
-POST /auth/api-key
-```
-
-Headers:
-```
-api-key: tr_a1b2c3d4e5f6g7h8i9j0...
-```
-
-Response:
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
 }
 ```
 
