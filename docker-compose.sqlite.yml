@@ -42,5 +42,30 @@ services:
       timeout: 5s
       retries: 5
 
+  docs:
+    image: python:3.9-slim
+    container_name: tool-registry-docs
+    volumes:
+      - ./postman:/app/postman
+    ports:
+      - "9000:8080"
+    working_dir: /app/postman
+    command: python server.py
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/tool_registry_api_collection.json"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    environment:
+      - PORT=8080
+      - SERVER_DESCRIPTION=Postman Collection with CRUD and Cross-Entity Test Scenarios
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   redis_data: 

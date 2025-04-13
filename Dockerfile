@@ -37,6 +37,12 @@ RUN mkdir -p /app/data && chown -R appuser:appuser /app/data
 RUN mkdir -p /app/postman && \
     chown -R appuser:appuser /app/postman
 
+# Copy Postman files
+COPY postman/tool_registry_api_collection.json /app/postman/
+COPY postman/tool_registry_environment.json /app/postman/
+COPY postman/README.md /app/postman/
+COPY postman/server.py /app/postman/
+
 # Switch to non-root user
 USER appuser
 

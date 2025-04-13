@@ -40,6 +40,23 @@ The application will be available at:
 - API: http://localhost:8000
 - Swagger Documentation: http://localhost:8000/docs
 - ReDoc API Documentation: http://localhost:8000/redoc
+- Postman Collection: http://localhost:9000/tool_registry_api_collection.json
+- Postman Environment: http://localhost:9000/tool_registry_environment.json
+- Postman Documentation: http://localhost:9000/README.md
+
+### Postman Collection
+
+The Docker setup includes a dedicated service for serving the Postman collection files. The collection provides comprehensive testing capabilities:
+
+- Complete API endpoint documentation
+- Authentication workflows (disabled by default for easier testing)
+- Acceptance test scenarios
+- Security testing suite 
+- CRUD operations testing for all entities
+- Cross-entity relationship testing
+- Test data generation utilities
+
+These resources are served with CORS headers enabled, making it easy to import them directly into Postman.
 
 ## Environment Variables
 

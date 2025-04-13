@@ -61,7 +61,7 @@ services:
     ports:
       - "9000:8080"
     working_dir: /app/postman
-    command: python -m http.server 8080
+    command: python server.py
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/tool_registry_api_collection.json"]
@@ -69,6 +69,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    environment:
+      - PORT=8080
+      - SERVER_DESCRIPTION=Postman Collection with CRUD and Cross-Entity Test Scenarios
 
 volumes:
   postgres_data:
