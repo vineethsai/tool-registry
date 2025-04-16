@@ -31,6 +31,9 @@ from ..schemas import (
     AccessLogResponse
 )
 
+# Initialize logger
+logger = logging.getLogger(__name__)
+
 class ToolCreateRequest(BaseModel):
     """Request model for creating a new tool."""
     name: str
@@ -141,8 +144,8 @@ async def startup_event():
     Initialize the application on startup.
     Sets up test data for development if needed.
     """
-    # Just log startup
-    logging.info("Tool Registry API starting up...")
+    # Log startup with proper logger
+    logger.info("Tool Registry API starting up...")
     
     # Initialize test data
     create_test_data()
@@ -170,9 +173,10 @@ def create_test_data():
         
         # Add to tool registry's in-memory storage
         tool_registry._tools[str(test_tool_id)] = test_tool
+        logger.debug(f"Added test tool with ID: {test_tool_id}")
         
     except Exception as e:
-        logging.error(f"Error creating test data: {e}")
+        logger.error(f"Error creating test data: {e}")
 
 app.middleware("http")(rate_limit_middleware(rate_limiter))
 

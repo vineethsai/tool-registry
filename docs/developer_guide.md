@@ -60,6 +60,66 @@ The Authentication Service (`tool_registry/auth/authentication.py`) is responsib
 
 The Authorization Service (`tool_registry/auth/authorization.py`) is responsible for authorizing access to tools. It provides methods for creating and evaluating policies.
 
+## Logging System
+
+The Tool Registry implements a comprehensive logging system to provide insight into the application's behavior, particularly for critical security components.
+
+### Credential Vendor Logging
+
+The `CredentialVendor` class (`tool_registry/credential_vendor.py`) includes detailed logging for all credential operations:
+
+- **Initialization**: Logs when the vendor is initialized
+- **Generation**: Logs when credentials are generated, including details about the agent, tool, and scope
+- **Validation**: Logs validation attempts, token details, and validation results
+- **Revocation**: Logs when credentials are revoked
+- **Cleanup**: Logs expired credential cleanup activities
+
+Example of using the logs for debugging credential issues:
+
+```python
+# Set logging level to DEBUG to see all credential operations
+import logging
+logging.getLogger('tool_registry.credential_vendor').setLevel(logging.DEBUG)
+```
+
+### Rate Limiter Logging
+
+The `RateLimiter` class (`tool_registry/core/rate_limit.py`) includes detailed logging for rate limiting operations:
+
+- **Initialization**: Logs when the rate limiter is initialized with configuration details
+- **Request Checking**: Logs when a request is checked against the rate limit
+- **Redis Operations**: Logs Redis interactions for distributed rate limiting
+- **Fallback Operations**: Logs when the system falls back to in-memory storage
+- **Rate Limit Decisions**: Logs detailed information about rate limit decisions
+
+Example logs to look for when troubleshooting rate limiting issues:
+
+```
+INFO:tool_registry.core.rate_limit:RateLimiter initialized with limit: 100/60s, Redis: Enabled
+DEBUG:tool_registry.core.rate_limit:Checking rate limit for 192.168.1.1 at 2023-06-20T12:34:56
+DEBUG:tool_registry.core.rate_limit:Request allowed for 192.168.1.1, remaining: 99/100, reset window: 60s
+WARNING:tool_registry.core.rate_limit:Rate limit exceeded for 192.168.1.1: 100/100 at 2023-06-20T12:35:30
+```
+
+### Best Practices for Logging
+
+1. **Log Levels**: Use appropriate log levels:
+   - `DEBUG`: Detailed information for debugging
+   - `INFO`: General information about system operation
+   - `WARNING`: Unusual events that don't affect normal operation
+   - `ERROR`: Errors that prevent proper functioning
+
+2. **Context Information**: Include relevant context in log messages, such as:
+   - Identifiers (agent_id, tool_id, credential_id)
+   - Timestamps
+   - Operation results
+   - Error details
+
+3. **Performance Considerations**: 
+   - Use conditional logging for expensive operations
+   - Keep high-volume DEBUG logs behind level checks
+   - Consider structured logging for production environments
+
 ## Database Schema
 
 The Tool Registry uses SQLAlchemy as its ORM. A complete database schema is documented in `docs/schema.md`.

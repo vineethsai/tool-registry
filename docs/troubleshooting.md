@@ -2,6 +2,76 @@
 
 This document provides solutions for common issues you may encounter when working with the GenAI Tool Registry.
 
+## Enhanced Logging for Troubleshooting (v1.0.1+)
+
+Starting with version 1.0.1, the Tool Registry includes enhanced logging capabilities that can be leveraged for troubleshooting.
+
+### Enabling Debug Logging
+
+To enable detailed logging, set the `LOG_LEVEL` environment variable:
+
+```bash
+# In development
+export LOG_LEVEL=DEBUG
+
+# In Docker Compose
+environment:
+  - LOG_LEVEL=DEBUG
+```
+
+### Troubleshooting Credential Issues
+
+The credential vendor system now includes comprehensive logging for all operations:
+
+**Common Issues and Log Patterns:**
+
+1. **Invalid Credentials**
+   - Look for: `WARNING:tool_registry.credential_vendor:Token not found in mapping: <token_preview>`
+   - Solution: Ensure the credential was properly issued and hasn't expired
+
+2. **Expired Credentials**
+   - Look for: `WARNING:tool_registry.credential_vendor:Credential expired: <current_time> > <expires_at>`
+   - Solution: Request a new credential or extend the expiration time
+
+3. **Token Mapping Issues**
+   - Look for: `DEBUG:tool_registry.credential_vendor:Token added to mapping: <token_preview>... -> <credential_id>`
+   - Solution: Check if the token is being properly stored in the mapping
+
+Example of filtering logs for credential issues:
+
+```bash
+# Using grep to filter logs
+grep -i "credential_vendor" app.log | grep -i "WARNING"
+
+# Using journalctl for containerized deployments
+journalctl -u tool-registry -o json | jq 'select(.MESSAGE | contains("credential_vendor"))'
+```
+
+### Troubleshooting Rate Limiting Issues
+
+The rate limiter now provides detailed logs for better debugging:
+
+**Common Issues and Log Patterns:**
+
+1. **Rate Limit Exceeded**
+   - Look for: `WARNING:tool_registry.core.rate_limit:Rate limit exceeded for <identifier>: <count>/<rate_limit>`
+   - Solution: Implement request throttling or increase the rate limit
+
+2. **Redis Connection Issues**
+   - Look for: `ERROR:tool_registry.core.rate_limit:Redis error in rate limiter: <error>. Falling back to in-memory storage`
+   - Solution: Check Redis connection and configuration
+
+3. **Reset Time Calculation**
+   - Look for: `DEBUG:tool_registry.core.rate_limit:Reset time for <identifier>: <reset_time>`
+   - Use this information to properly implement retry-after logic
+
+Example command to monitor rate limiting in real-time:
+
+```bash
+# Follow logs filtering for rate limit entries
+tail -f app.log | grep "rate_limit"
+```
+
 ## Database Connection Issues
 
 ### Issue: Unable to Connect to Database

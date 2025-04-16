@@ -6,10 +6,14 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import or_
 import uuid
+import logging
 
 from ..models.tool import Tool as DBTool
 from ..models.tool_metadata import ToolMetadata as DBToolMetadata
 from .database import Database
+
+# Initialize logger for this module
+logger = logging.getLogger(__name__)
 
 class ToolRegistry:
     """Registry for managing tools and their metadata."""
@@ -20,12 +24,15 @@ class ToolRegistry:
             # Get a session from the Database object
             self.db_instance = db
             self.db = next(db.get_session())
+            logger.debug("Initialized ToolRegistry with Database instance")
         else:
             # Use the provided session directly
             self.db_instance = None
             self.db = db
+            logger.debug("Initialized ToolRegistry with Session instance")
         self.tools = {}  # For backward compatibility
         self._metadata: Dict[UUID, DBToolMetadata] = {}
+        logger.info("ToolRegistry initialized")
 
     async def register_tool(self, tool_data: Union[Dict[str, Any], DBTool]) -> Dict[str, Any]:
         """Register a new tool in the registry."""
@@ -45,14 +52,17 @@ class ToolRegistry:
             }
             # Use the existing tool_id if provided
             tool_id = tool_data.tool_id
+            logger.debug(f"Registering existing tool with ID: {tool_id}")
         else:
             # Using dictionary input
             tool_dict = tool_data
             tool_id = uuid.uuid4()
+            logger.debug(f"Registering new tool with generated ID: {tool_id}")
             
         # Check if tool with the same name exists
         existing_tool = self.db.query(DBTool).filter(DBTool.name == tool_dict["name"]).first()
         if existing_tool:
+            logger.warning(f"Tool registration failed: Tool with name '{tool_dict['name']}' already exists")
             raise ValueError(f"Tool with name '{tool_dict['name']}' already exists")
         
         # Create tool in database
@@ -72,6 +82,9 @@ class ToolRegistry:
         self.db.commit()
         self.db.refresh(new_tool)
         
+        logger.info(f"Tool registered successfully: {new_tool.name} (ID: {new_tool.tool_id})")
+        logger.debug(f"Tool details: API endpoint: {new_tool.api_endpoint}, Version: {new_tool.version}, Tags: {new_tool.tags}")
+        
         # For backward compatibility
         self.tools[tool_id] = tool_dict
         
@@ -81,13 +94,22 @@ class ToolRegistry:
         """Get a tool by ID."""
         if isinstance(tool_id, str):
             tool_id = UUID(tool_id)
-            
+        
+        logger.debug(f"Getting tool with ID: {tool_id}")    
         tool = self.db.query(DBTool).filter(DBTool.tool_id == tool_id).first()
+        
+        if tool:
+            logger.debug(f"Found tool: {tool.name}")
+        else:
+            logger.debug(f"Tool not found with ID: {tool_id}")
+            
         return tool
 
     async def list_tools(self) -> List[DBTool]:
         """List all registered tools."""
+        logger.debug("Listing all tools")
         tools = self.db.query(DBTool).all()
+        logger.info(f"Retrieved {len(tools)} tools from registry")
         return tools
 
     async def search_tools(self, query: str) -> List[DBTool]:
@@ -101,6 +123,7 @@ class ToolRegistry:
             List of tools matching the query
         """
         query = query.lower()
+        logger.info(f"Searching tools with query: '{query}'")
         
         # Perform SQL query to filter tools based on name and description
         # For tags, we'll filter in Python since JSON searching in SQLite is limited
@@ -111,11 +134,14 @@ class ToolRegistry:
             )
         ).all()
         
+        logger.debug(f"Found {len(tools)} tools matching name/description")
+        
         # Filter by tags in Python
         # Get all tools that weren't already matched
         all_tools = self.db.query(DBTool).all()
         matched_ids = {tool.tool_id for tool in tools}
         
+        tag_matches = 0
         # Look for tag matches
         for tool in all_tools:
             if tool.tool_id in matched_ids:
@@ -124,17 +150,25 @@ class ToolRegistry:
             # Check if any tag contains the query
             if tool.tags and any(query in tag.lower() for tag in tool.tags):
                 tools.append(tool)
+                tag_matches += 1
         
+        logger.debug(f"Found {tag_matches} additional tools matching tags")
+        logger.info(f"Total tools found in search: {len(tools)}")
         return tools
 
     async def update_tool(self, tool_id: Union[str, UUID], updated_data: Union[Dict[str, Any], DBTool]) -> bool:
         """Update a tool's metadata."""
         if isinstance(tool_id, str):
             tool_id = UUID(tool_id)
+        
+        logger.info(f"Updating tool with ID: {tool_id}")
             
         tool = self.db.query(DBTool).filter(DBTool.tool_id == tool_id).first()
         if not tool:
+            logger.warning(f"Tool update failed: Tool with ID {tool_id} not found")
             raise ValueError(f"Tool with ID {tool_id} not found")
+        
+        logger.debug(f"Found tool to update: {tool.name}")
         
         if isinstance(updated_data, DBTool):
             # If we received a Tool object, extract the relevant fields
@@ -150,6 +184,8 @@ class ToolRegistry:
             }
         else:
             update_dict = updated_data
+        
+        logger.debug(f"Update fields: {list(update_dict.keys())}")
             
         # Update tool fields
         for key, value in update_dict.items():
@@ -158,6 +194,8 @@ class ToolRegistry:
                 
         self.db.commit()
         self.db.refresh(tool)
+        
+        logger.info(f"Tool updated successfully: {tool.name} (ID: {tool.tool_id})")
         
         # For backward compatibility
         if tool_id in self.tools:
@@ -169,13 +207,19 @@ class ToolRegistry:
         """Delete a tool from the registry."""
         if isinstance(tool_id, str):
             tool_id = UUID(tool_id)
+        
+        logger.info(f"Deleting tool with ID: {tool_id}")
             
         tool = self.db.query(DBTool).filter(DBTool.tool_id == tool_id).first()
         if not tool:
+            logger.warning(f"Tool deletion failed: Tool with ID {tool_id} not found")
             return False
-            
+        
+        tool_name = tool.name
         self.db.delete(tool)
         self.db.commit()
+        
+        logger.info(f"Tool deleted successfully: {tool_name} (ID: {tool_id})")
         
         # For backward compatibility
         if tool_id in self.tools:
@@ -186,4 +230,5 @@ class ToolRegistry:
     def __del__(self):
         """Clean up resources."""
         if self.db_instance is not None:
+            logger.debug("Closing database session in ToolRegistry destructor")
             self.db.close() 

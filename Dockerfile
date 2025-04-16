@@ -2,6 +2,11 @@ FROM python:3.9-slim
 
 WORKDIR /app
 
+# Version information
+LABEL version="1.0.1"
+LABEL description="Tool Registry API with enhanced logging capabilities"
+LABEL maintainer="Vineeth Sai Narajala"
+
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
@@ -52,6 +57,7 @@ EXPOSE 8000
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV DATABASE_URL=sqlite:///./data/tool_registry.db
+ENV APP_VERSION=1.0.1
 
 # Add health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \

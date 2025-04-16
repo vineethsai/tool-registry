@@ -3,7 +3,7 @@
 Tool Registry is a comprehensive system for managing, securing, and controlling access to AI tools and services. It enables organizations to track, govern, and monitor tool usage in AI applications.
 
 > **IMPORTANT WARNING: AUTHENTICATION IS DISABLED**  
-> Authentication has been temporarily disabled to facilitate development and testing. The API is currently accessible without credentials. Before deploying to production, authentication MUST be re-enabled. See the [Security Guide](docs/security_guide.md) for details.
+> Authentication has been temporarily disabled to facilitate development and testing. The API is currently accessible without credentials. Before deploying to production, authentication MUST be re-enabled. Refer to the authentication setup in the code and configuration.
 
 ## Features
 
@@ -13,6 +13,7 @@ Tool Registry is a comprehensive system for managing, securing, and controlling 
 - **Credential Management**: Secure credential issuance and validation
 - **Usage Tracking**: Monitor and analyze tool usage patterns
 - **Rate Limiting**: Set and enforce usage limits per agent or policy
+- **Enhanced Logging**: Comprehensive logging for rate limiting and credential operations
 - **API Integration**: RESTful API for seamless integration
 
 ## Getting Started
@@ -53,12 +54,19 @@ Tool Registry is a comprehensive system for managing, securing, and controlling 
 
 5. Run database migrations
    ```
-   alembic upgrade head
+   # Alembic setup might be missing, this step might not apply directly.
+   # Database tables are created on startup via start.sh
+   # If using Alembic, uncomment and ensure it's configured:
+   # alembic upgrade head
    ```
 
 6. Start the server
    ```
-   uvicorn tool_registry.main:app --reload
+   # Using the provided start script (handles DB init)
+   ./start.sh
+   
+   # Or directly with uvicorn (if DB is already initialized)
+   # uvicorn tool_registry.api.app:app --host 0.0.0.0 --port 8000 --reload
    ```
 
 The API will be available at http://localhost:8000.
@@ -72,12 +80,12 @@ The project includes a comprehensive Postman collection for testing the API:
 3. Import the environment from `postman/tool_registry_environment.json`
 4. Select the "Tool Registry API Environment" from the environment dropdown
 
-To serve the Postman documentation locally, you can use the provided script:
+To serve the Postman documentation locally, you can use the provided script (requires Python 3):
 ```
 ./serve_postman_docs.sh
 ```
 
-This will make the collection available at http://localhost:8080/tool_registry_api_collection.json.
+This will attempt to start the server on port 8080 or another available port.
 
 When running with Docker Compose, the Postman documentation is available at http://localhost:9000/tool_registry_api_collection.json.
 
@@ -130,25 +138,27 @@ For more examples, see [Usage Examples](docs/usage_examples.md).
 
 ## Documentation
 
-- [API Reference](docs/api_reference.md)
-- [Architecture Overview](docs/architecture.md)
-- [Schema Reference](docs/schema_reference.md)
-- [Security Model](docs/security.md)
-- [Deployment Guide](docs/deployment.md)
-- [Postman Collection](postman/README.md)
+- API Reference: Available via Swagger UI (`/docs`) and ReDoc (`/redoc`) when the server is running.
+- [Architecture Overview](docs/architecture.md) (Needs review/creation)
+- [Schema Reference](docs/schema_reference.md) (Needs review/creation)
+- [Security Model](docs/security.md) (Needs review/creation)
+- [Deployment Guide](docs/deployment_guide.md)
+- [Docker Guide](DOCKER.md)
+- [Postman Collection Guide](postman/README.md)
 
 ## Development
 
 ### Running Tests
 
 ```
-python -m pytest -v
+pytest
 ```
 
 With coverage report:
 
 ```
-python -m pytest --cov=tool_registry tests/
+pytest --cov=tool_registry --cov-report=html
+# Open coverage_html_report/index.html in your browser
 ```
 
 ### Code Style
@@ -163,10 +173,12 @@ isort tool_registry tests
 ### Environment Variables
 
 - `DATABASE_URL`: Database connection string
-- `SECRET_KEY`: Secret key for JWT token generation
-- `DEBUG`: Enable debug mode (True/False)
+- `SECRET_KEY` / `JWT_SECRET_KEY`: Secret key for JWT token generation (check `tool_registry/core/config.py` for exact name)
+- `DEBUG`: Not explicitly used, `LOG_LEVEL` controls verbosity.
 - `LOG_LEVEL`: Logging level (INFO, DEBUG, WARNING, ERROR)
-- `ALLOWED_ORIGINS`: CORS allowed origins, comma-separated
+- `ALLOWED_ORIGINS`: CORS allowed origins (Handled by FastAPI middleware, check `tool_registry/api/app.py`)
+- `VAULT_URL`, `VAULT_TOKEN`: Optional Vault configuration
+- `REDIS_URL`: Required for rate limiting
 
 ## Contributing
 
@@ -181,8 +193,8 @@ isort tool_registry tests
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## Contact
+## Author
 
-Project Team - your.email@example.com
+Vineeth Sai Narajala
 
-Project Link: [https://github.com/yourusername/tool-registry](https://github.com/yourusername/tool-registry) 
+Project Link: [https://github.com/yourusername/tool-registry](https://github.com/yourusername/tool-registry) (Please update this link) 

@@ -3,8 +3,8 @@
 This Postman collection provides a comprehensive set of API endpoints for interacting with the Tool Registry API.
 
 > **IMPORTANT NOTES:**
-> 1. **AUTHENTICATION IS DISABLED** - Authentication has been disabled to facilitate development and testing. The API is currently accessible without credentials.
-> 2. **API STRUCTURE** - The base URL has been updated to `http://localhost:8000` without the `/api/v1` path. You may need to adjust the paths in the requests based on your actual API implementation.
+> 1. **AUTHENTICATION IS DISABLED** - Authentication has been disabled in the default setup to facilitate development and testing. The API is currently accessible without credentials. Before deploying to production, authentication MUST be re-enabled.
+> 2. **API STRUCTURE** - The base URL in the environment is set to `http://localhost:8000`. Ensure this matches your running server instance.
 
 ## Contents
 
@@ -28,7 +28,7 @@ The collection includes the following API endpoint groups:
 1. Install [Postman](https://www.postman.com/downloads/)
 2. Import the collection file: `tool_registry_api_collection.json`
 3. Import the environment file: `tool_registry_environment.json`
-4. Select the "Tool Registry API Environment (Auth Disabled)" from the environment dropdown
+4. Select the "Tool Registry API Environment (Auth Disabled)" from the environment dropdown in Postman.
 
 ## Authentication
 
@@ -38,7 +38,7 @@ The collection has been configured with `noauth` as the authentication type, so 
 
 ## Using Test Variables
 
-The environment includes test variables for easier testing:
+The environment includes test variables for easier testing (populated by some test flows or manually):
 - `testToolId` - Sample tool ID for testing endpoints
 - `testAgentId` - Sample agent ID for testing endpoints
 - `testPolicyId` - Sample policy ID for testing endpoints
@@ -139,10 +139,16 @@ The default base URL is set to `http://localhost:8000`. To change this:
 ## Troubleshooting
 
 If you receive errors like `Method Not Allowed` or `Not Found`:
-1. Check that the API server is running
-2. Verify that the endpoint paths match your API implementation
-3. Confirm that you're using the correct HTTP method (GET, POST, PUT, DELETE)
+1. Check that the API server is running (e.g., via `./start.sh` or `docker compose up`).
+2. Verify that the `baseUrl` in the selected Postman environment matches where the API is running.
+3. Verify that the endpoint paths in the request match your API implementation.
+4. Confirm that you're using the correct HTTP method (GET, POST, PUT, DELETE).
+
+If you get connection refused errors:
+1. Ensure the server process or Docker container is running.
+2. Check firewall rules if accessing from a different machine.
 
 ## Notes
 
-- Pagination is supported in list endpoints using `page` and `page_size` query parameters 
+- Pagination is supported in list endpoints using `page` and `page_size` query parameters.
+- The collection uses pre-request and test scripts extensively to manage test data and validate responses. 

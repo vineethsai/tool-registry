@@ -1,3 +1,5 @@
+import logging
+import logging.config
 import os
 from typing import Optional
 from pydantic_settings import BaseSettings
@@ -7,6 +9,46 @@ from dotenv import load_dotenv
 import secrets
 
 load_dotenv()
+
+# Define logging configuration dictionary
+LOGGING_CONFIG = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {
+            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "default",
+            "level": "DEBUG",  # Capture debug level and above
+        },
+    },
+    "loggers": {
+        "tool_registry": {  # Root logger for the application
+            "handlers": ["console"],
+            "level": "INFO",  # Default level for the app
+            "propagate": False,
+        },
+        "uvicorn.access": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "uvicorn.error": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+    "root": { # Catch-all root logger
+        "handlers": ["console"],
+        "level": "WARNING", # Log warnings and above from other libraries
+    },
+}
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
@@ -31,8 +73,8 @@ class Settings(BaseSettings):
     rate_limit: int = 100  # requests per time window
     rate_limit_window: int = 60  # time window in seconds
     
-    # Logging
-    log_level: str = "INFO"
+    # Logging level - will be used to set the app logger level
+    log_level: str = Field(default="INFO")
     
     class Config:
         env_file = ".env"
@@ -72,5 +114,13 @@ class SecretManager:
 # Initialize settings
 settings = Settings()
 
+# Configure logging
+LOGGING_CONFIG["loggers"]["tool_registry"]["level"] = settings.log_level.upper()
+logging.config.dictConfig(LOGGING_CONFIG)
+
 # Initialize secret manager
-secret_manager = SecretManager(settings) 
+secret_manager = SecretManager(settings)
+
+# Get a logger instance for this module (optional, for testing config)
+logger = logging.getLogger(__name__)
+logger.info(f"Logging configured with level: {settings.log_level.upper()}") 
