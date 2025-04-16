@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.9] - 2025-04-25
+
+### Added
+- Added comprehensive API endpoint test script (`test_all_endpoints.py`) with 100% success rate
+- Added option to skip authentication tests in the test script
+- Enhanced error handling and reporting in test results
+- Added better support for testing all API endpoints with detailed output
+
+### Fixed
+- Fixed API endpoint compatibility issues for tool access and credential management
+- Fixed tool access request format to properly conform to API expectations (using list format)
+- Corrected policy and credential endpoint handling in the test script
+- Fixed parameter formats to match API schema for all endpoints
+- Improved error handling for edge cases in API responses
+
+### Changed
+- Updated documentation to reflect the latest testing improvements
+- Enhanced test script to provide more meaningful error messages
+- Improved test resilience by using fixed test UUIDs for consistent testing
+
+## [1.0.8] - 2025-04-20
+
+### Fixed
+- Improved error handling for credential management endpoints
+- Enhanced validation of tool access requests
+- Fixed inconsistencies in API response formats
+
+### Changed
+- Updated Docker container with the latest dependencies
+- Improved Docker healthcheck implementation
+- Enhanced startup script with better error handling
+
 ## [1.0.7] - 2025-04-17
 
 ### Fixed

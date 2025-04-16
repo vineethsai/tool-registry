@@ -1,82 +1,88 @@
+# Docker Compose file for Tool Registry API
+# Includes app (API), PostgreSQL database, Redis, and documentation server
+
 version: '3.8'
 
 services:
   app:
-    build: .
-    image: tool-registry:1.0.6
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: tool-registry:1.0.9  # Updated to version 1.0.9 with comprehensive API testing
+    container_name: tool-registry-app
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/tool_registry
+      - DATABASE_URL=postgresql://postgres:password@db:5432/toolregistry
       - REDIS_URL=redis://redis:6379/0
-      - JWT_SECRET_KEY=your_secret_key_here
-      - LOG_LEVEL=INFO  # Set to DEBUG for more detailed logging information
-      - APP_VERSION=1.0.6
+      - JWT_SECRET_KEY=mydevsecretkey
+      - LOG_LEVEL=INFO
     volumes:
-      - ./tool_registry:/app/tool_registry
       - ./data:/app/data
     depends_on:
       - db
       - redis
-    restart: unless-stopped
-    command: ./start.sh
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
-    labels:
-      - "description=Tool Registry API with enhanced test reliability and stability (v1.0.6)"
+      start_period: 20s
+    restart: unless-stopped
 
   db:
     image: postgres:14
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+    container_name: tool-registry-db
     environment:
       - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=tool_registry
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=toolregistry
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
-    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   redis:
     image: redis:7
-    volumes:
-      - redis_data:/data
+    container_name: tool-registry-redis
     ports:
       - "6379:6379"
-    restart: unless-stopped
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   docs:
     image: python:3.9-slim
+    container_name: tool-registry-docs
     volumes:
-      - ./postman:/app/postman
+      - ./postman:/postman
     ports:
-      - "9000:8080"
-    working_dir: /app/postman
-    command: python server.py
-    restart: unless-stopped
+      - "9000:9000"
+    working_dir: /postman
+    command: >
+      bash -c "
+        apt-get update && 
+        apt-get install -y --no-install-recommends python3-pip && 
+        pip install --no-cache-dir flask && 
+        python server.py"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/tool_registry_api_collection.json"]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/tool_registry_api_collection.json"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 10s
-    environment:
-      - PORT=8080
-      - SERVER_DESCRIPTION=Postman Collection with CRUD and Cross-Entity Test Scenarios
+      start_period: 20s
+    restart: unless-stopped
 
 volumes:
   postgres_data:

@@ -3,7 +3,7 @@
 
 set -e  # Exit on any error
 
-VERSION="1.0.7"
+VERSION="1.0.9"
 IMAGE_NAME="tool-registry"
 REGISTRY="localhost"  # Change this to your Docker registry if needed
 
@@ -36,9 +36,9 @@ sleep 10
 echo "Testing API health endpoint..."
 curl -s http://localhost:8000/health | grep -q "status" && echo "Health check successful" || echo "Health check failed"
 
-# Run end-to-end test for tool registration and discovery flow
-echo "Running end-to-end test for tool registration and discovery flow..."
-docker exec -it tool-registry-app-1 python -m pytest tests/test_end_to_end_flows.py::TestEndToEndFlows::test_tool_registration_and_discovery_flow -v
+# Run end-to-end test for comprehensive API testing
+echo "Running comprehensive API endpoint tests..."
+docker exec -it tool-registry-app-1 python test_all_endpoints.py
 
 echo ""
 echo "Tool Registry version $VERSION has been built and tagged."

@@ -1,6 +1,7 @@
 fastapi
 uvicorn
 pydantic
+pydantic-settings
 python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
@@ -10,3 +11,4 @@ prometheus-client
 psycopg2-binary
 sqlalchemy
 python-dotenv
+email-validator

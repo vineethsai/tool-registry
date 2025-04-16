@@ -3,7 +3,7 @@
 
 set -e  # Exit on any error
 
-VERSION="1.0.3"
+VERSION="1.0.9"
 BRANCH="main"
 REPO_URL="https://github.com/yourusername/tool-registry.git"  # Update this to your actual repository URL
 
@@ -19,7 +19,7 @@ git pull origin $BRANCH || { echo "Warning: Failed to pull latest changes. Conti
 git add .
 
 # Commit changes
-git commit -m "Release v$VERSION: Improved test reliability and mock implementations"
+git commit -m "Release v$VERSION: Comprehensive API endpoint testing and improved compatibility"
 
 # Push to GitHub
 git push origin $BRANCH || { echo "Error: Failed to push to GitHub"; exit 1; }

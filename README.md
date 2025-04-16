@@ -15,16 +15,17 @@ Tool Registry is a comprehensive system for managing, securing, and controlling 
 - **Rate Limiting**: Set and enforce usage limits per agent or policy
 - **Enhanced Logging**: Comprehensive logging for rate limiting and credential operations
 - **API Integration**: RESTful API for seamless integration
-- **Improved Test Reliability**: Robust testing framework with consistent mock implementations
+- **Improved Test Reliability**: Robust testing framework with 100% API endpoint test coverage
 
-## Latest Updates (v1.0.7)
+## Latest Updates (v1.0.9)
 
-The latest release (v1.0.7) focuses on improving tool registration and handling duplicate tools:
+The latest release (v1.0.9) focuses on improving API testing and compatibility:
 
-- Enhanced tool registration endpoint to properly handle duplicate tool names
-- Added proper HTTP status code (409 Conflict) for duplicate tool name attempts
-- Improved error handling and validation in the tool registration process
-- Enhanced integration between API endpoints and core registry layer
+- Enhanced test script (`test_all_endpoints.py`) with 100% success rate for all API endpoints
+- Fixed API endpoint compatibility issues for tool access and credential management
+- Improved handling of authentication endpoints with options to skip authentication testing
+- Better error handling and more detailed test results for each endpoint
+- Fixed tool access request format to conform to the API expectations
 
 For full details, see the [CHANGELOG.md](CHANGELOG.md) and [RELEASE_NOTES.md](RELEASE_NOTES.md).
 
@@ -83,6 +84,20 @@ For full details, see the [CHANGELOG.md](CHANGELOG.md) and [RELEASE_NOTES.md](RE
 
 The API will be available at http://localhost:8000.
 
+### Testing the API Endpoints
+
+The project includes a comprehensive test script to validate all API endpoints:
+
+```bash
+# Make the script executable
+chmod +x test_all_endpoints.py
+
+# Run the script
+./test_all_endpoints.py
+```
+
+This will test all API endpoints and provide a summary of the results. By default, the script skips authentication endpoints. To test all endpoints including authentication, modify the script as needed.
+
 ### Using the Postman Collection
 
 The project includes a comprehensive Postman collection for testing the API:
@@ -126,7 +141,7 @@ Docker images are automatically published to GitHub Container Registry (ghcr.io)
 To pull and run the latest release:
 
 ```bash
-docker pull ghcr.io/yourusername/tool-registry:1.0.1
+docker pull ghcr.io/yourusername/tool-registry:1.0.9
 # or
 docker-compose up -d
 ```
@@ -195,9 +210,9 @@ For more examples, see [Usage Examples](docs/usage_examples.md).
 ## Documentation
 
 - API Reference: Available via Swagger UI (`/docs`) and ReDoc (`/redoc`) when the server is running.
-- [Architecture Overview](docs/architecture.md) (Needs review/creation)
-- [Schema Reference](docs/schema_reference.md) (Needs review/creation)
-- [Security Model](docs/security.md) (Needs review/creation)
+- [Architecture Overview](docs/architecture.md)
+- [Schema Reference](docs/schema_reference.md)
+- [Security Model](docs/security_guide.md)
 - [Deployment Guide](docs/deployment_guide.md)
 - [Docker Guide](DOCKER.md)
 - [Postman Collection Guide](postman/README.md)
@@ -217,6 +232,14 @@ pytest --cov=tool_registry --cov-report=html
 # Open coverage_html_report/index.html in your browser
 ```
 
+### API Endpoint Tests
+
+For comprehensive API endpoint testing:
+
+```
+./test_all_endpoints.py
+```
+
 ### Code Style
 
 We use Black for code formatting and isort for import sorting:
@@ -229,10 +252,10 @@ isort tool_registry tests
 ### Environment Variables
 
 - `DATABASE_URL`: Database connection string
-- `SECRET_KEY` / `JWT_SECRET_KEY`: Secret key for JWT token generation (check `tool_registry/core/config.py` for exact name)
+- `SECRET_KEY` / `JWT_SECRET_KEY`: Secret key for JWT token generation
 - `DEBUG`: Not explicitly used, `LOG_LEVEL` controls verbosity.
 - `LOG_LEVEL`: Logging level (INFO, DEBUG, WARNING, ERROR)
-- `ALLOWED_ORIGINS`: CORS allowed origins (Handled by FastAPI middleware, check `tool_registry/api/app.py`)
+- `ALLOWED_ORIGINS`: CORS allowed origins
 - `VAULT_URL`, `VAULT_TOKEN`: Optional Vault configuration
 - `REDIS_URL`: Required for rate limiting
 

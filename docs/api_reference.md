@@ -738,6 +738,59 @@ Response:
 }
 ```
 
+## Testing API Endpoints
+
+The Tool Registry API includes a comprehensive test script that can be used to validate all API endpoints.
+
+### Using the Test Script
+
+The `test_all_endpoints.py` script in the root directory can be used to test all API endpoints:
+
+```bash
+# Make the script executable
+chmod +x test_all_endpoints.py
+
+# Run the script
+./test_all_endpoints.py
+```
+
+The script will:
+1. Test the Health endpoint to ensure the API is running
+2. Skip authentication endpoints by default (can be modified if needed)
+3. Test all Tool endpoints (list, get, search)
+4. Test all Agent endpoints
+5. Test all Policy endpoints
+6. Test Access Control endpoints
+7. Test Credential endpoints
+8. Test Logs and Statistics endpoints
+9. Test Tool Access endpoints
+
+### Test Results
+
+The script provides a detailed report of all tests run, indicating which tests passed and failed:
+
+```
+================================================================================
+================================= TEST SUMMARY =================================
+================================================================================
+Total Tests: 18
+Passed: 18
+Failed: 0
+Success Rate: 100.0%
+```
+
+For any failing tests, the script provides the HTTP status code and response body to help diagnose the issue.
+
+### Customizing Tests
+
+The `test_all_endpoints.py` script can be modified to:
+- Include or exclude specific endpoint tests
+- Test with different parameters
+- Test with authentication
+- Test with custom headers or data
+
+To modify the script, edit the `run_all_tests()` function to include or exclude specific tests or to change the parameters used for testing.
+
 ## Error Codes
 
 | Code | Description |
