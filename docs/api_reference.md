@@ -258,6 +258,20 @@ Response:
 }
 ```
 
+Error Responses:
+
+| Status Code | Description |
+|------------|-------------|
+| 409 Conflict | A tool with the provided name already exists |
+
+Example error response for duplicate tool:
+
+```json
+{
+  "detail": "Tool with name 'Text Summarizer' already exists"
+}
+```
+
 ### Update Tool
 
 Updates an existing tool.

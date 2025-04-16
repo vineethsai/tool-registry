@@ -1,5 +1,75 @@
 # Release Notes
 
+## Tool Registry v1.0.7 (2025-04-17)
+
+### Overview
+
+This release focuses on enhancing the tool registration process to properly handle duplicate tool names, improving error handling, and providing clearer feedback when conflicts occur.
+
+### What's New
+
+1. **Improved Tool Registration**
+   - Enhanced the tool registration endpoint to properly handle duplicate tool names
+   - Added proper HTTP status code (409 Conflict) when attempting to register a tool with an existing name
+   - Improved error handling in the tool registration process
+
+2. **Enhanced Validation and Error Handling**
+   - Added more robust validation of tool names during registration
+   - Enhanced error responses with descriptive messages for better debugging
+   - Improved integration between API endpoints and core registry layer
+
+3. **Bug Fixes**
+   - Fixed duplicate tool name detection using the tool registry's search functionality
+   - Improved error handling in the tool registration process
+
+### Docker Updates
+
+The Docker container has been updated with version 1.0.7 and includes:
+- Updated version labeling in Dockerfile
+- Updated build and test scripts for easier releases
+
+### Installation and Upgrade
+
+#### Docker Installation
+
+```bash
+# Pull and run the latest version
+docker pull ghcr.io/yourusername/tool-registry:1.0.7
+docker-compose up -d
+```
+
+#### Upgrading from v1.0.5
+
+```bash
+# Pull the latest changes
+git pull
+
+# Build and start the updated containers
+./build_release.sh
+```
+
+### Testing the New Features
+
+1. **Testing Duplicate Tool Handling**
+   - Attempt to register a tool with an existing name to verify the 409 conflict response:
+   ```bash
+   # First, register a tool
+   curl -X POST "http://localhost:8000/tools" -H "Content-Type: application/json" -d '{"name":"Test Tool","description":"Test tool for API testing"}'
+   
+   # Then try to register another tool with the same name
+   curl -X POST "http://localhost:8000/tools" -H "Content-Type: application/json" -d '{"name":"Test Tool","description":"Another test tool"}'
+   
+   # Should return a 409 Conflict response
+   ```
+
+### Known Issues
+
+- When running with Redis disabled, rate limiting falls back to in-memory storage with a warning
+
+### Contributors
+
+- Vineeth Sai Narajala
+
 ## Tool Registry v1.0.3 (2025-04-15)
 
 ### Overview
