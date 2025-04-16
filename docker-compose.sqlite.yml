@@ -10,6 +10,7 @@ services:
       - DATABASE_URL=sqlite:///./data/tool_registry.db
       - REDIS_URL=redis://redis:6379/0
       - JWT_SECRET_KEY=your_secret_key_here
+      - APP_VERSION=1.0.4
     volumes:
       - ./data:/app/data
     depends_on:
