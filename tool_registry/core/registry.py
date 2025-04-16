@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Union, Any
 from uuid import UUID
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from sqlalchemy import or_
+from sqlalchemy import or_, text, func
 import uuid
 import logging
 
@@ -31,6 +31,7 @@ class ToolRegistry:
             self.db = db
             logger.debug("Initialized ToolRegistry with Session instance")
         self.tools = {}  # For backward compatibility
+        self._tools = {}  # Add this attribute to fix the error
         self._metadata: Dict[UUID, DBToolMetadata] = {}
         logger.info("ToolRegistry initialized")
 
@@ -92,69 +93,76 @@ class ToolRegistry:
 
     async def get_tool(self, tool_id: Union[str, UUID]) -> Optional[DBTool]:
         """Get a tool by ID."""
-        if isinstance(tool_id, str):
-            tool_id = UUID(tool_id)
-        
-        logger.debug(f"Getting tool with ID: {tool_id}")    
-        tool = self.db.query(DBTool).filter(DBTool.tool_id == tool_id).first()
-        
-        if tool:
-            logger.debug(f"Found tool: {tool.name}")
-        else:
-            logger.debug(f"Tool not found with ID: {tool_id}")
+        try:
+            if isinstance(tool_id, str):
+                tool_id = UUID(tool_id)
             
-        return tool
+            logger.debug(f"Getting tool with ID: {tool_id}")    
+            tool = self.db.query(DBTool).filter(DBTool.tool_id == tool_id).first()
+            
+            if tool:
+                logger.debug(f"Found tool: {tool.name}")
+            else:
+                logger.debug(f"Tool not found with ID: {tool_id}")
+                
+            return tool
+        except ValueError as e:
+            logger.error(f"Invalid UUID format for tool_id: {str(e)}")
+            return None
+        except Exception as e:
+            logger.error(f"Error retrieving tool: {str(e)}")
+            return None
 
     async def list_tools(self) -> List[DBTool]:
         """List all registered tools."""
-        logger.debug("Listing all tools")
-        tools = self.db.query(DBTool).all()
-        logger.info(f"Retrieved {len(tools)} tools from registry")
-        return tools
+        try:
+            logger.debug("Listing all tools")
+            tools = self.db.query(DBTool).all()
+            logger.info(f"Retrieved {len(tools)} tools from registry")
+            return tools
+        except Exception as e:
+            logger.error(f"Error listing tools: {str(e)}")
+            return []
 
     async def search_tools(self, query: str) -> List[DBTool]:
         """
         Search for tools by name, description, or tags.
         
         Args:
-            query: The search query to filter tools
+            query: The search string
             
         Returns:
-            List of tools matching the query
+            List of matching tools
         """
-        query = query.lower()
-        logger.info(f"Searching tools with query: '{query}'")
-        
-        # Perform SQL query to filter tools based on name and description
-        # For tags, we'll filter in Python since JSON searching in SQLite is limited
-        tools = self.db.query(DBTool).filter(
-            or_(
-                DBTool.name.ilike(f"%{query}%"),
-                DBTool.description.ilike(f"%{query}%")
-            )
-        ).all()
-        
-        logger.debug(f"Found {len(tools)} tools matching name/description")
-        
-        # Filter by tags in Python
-        # Get all tools that weren't already matched
-        all_tools = self.db.query(DBTool).all()
-        matched_ids = {tool.tool_id for tool in tools}
-        
-        tag_matches = 0
-        # Look for tag matches
-        for tool in all_tools:
-            if tool.tool_id in matched_ids:
-                continue
+        try:
+            logger.debug(f"Searching tools for: {query}")
+            query_lower = query.lower()
+            
+            # First try to get results from the database
+            tools = self.db.query(DBTool).filter(
+                or_(
+                    func.lower(DBTool.name).contains(query_lower),
+                    func.lower(DBTool.description).contains(query_lower)
+                )
+            ).all()
+            
+            # Also search through tags
+            tag_matched_tools = self.db.query(DBTool).all()
+            tag_results = [
+                tool for tool in tag_matched_tools 
+                if tool.tags and any(query_lower in tag.lower() for tag in tool.tags)
+            ]
+            
+            # Combine results, ensuring no duplicates
+            all_results = {str(tool.tool_id): tool for tool in tools}
+            for tool in tag_results:
+                all_results[str(tool.tool_id)] = tool
                 
-            # Check if any tag contains the query
-            if tool.tags and any(query in tag.lower() for tag in tool.tags):
-                tools.append(tool)
-                tag_matches += 1
-        
-        logger.debug(f"Found {tag_matches} additional tools matching tags")
-        logger.info(f"Total tools found in search: {len(tools)}")
-        return tools
+            logger.info(f"Found {len(all_results)} tools matching '{query}'")
+            return list(all_results.values())
+        except Exception as e:
+            logger.error(f"Error searching tools: {str(e)}")
+            return []
 
     async def update_tool(self, tool_id: Union[str, UUID], updated_data: Union[Dict[str, Any], DBTool]) -> bool:
         """Update a tool's metadata."""

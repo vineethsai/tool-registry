@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.4] - 2025-04-16
+
+### Fixed
+- Fixed the tool registry initialization to ensure `_tools` attribute is correctly defined
+- Resolved critical error in the app startup - 'ToolRegistry' object has no attribute '_tools'
+- Improved test mocks for end-to-end flow tests to handle Tool objects consistently
+- Enhanced UUID handling to ensure consistent string format across API responses
+- Fixed serialization issues when handling UUID objects in tool responses
+
+### Changed
+- Updated mock implementations in tests to better handle both dictionary and Tool object formats
+- Enhanced tool discovery flow to ensure consistent response formats
+- Improved test reliability for tool registration and discovery flows
+
 ## [1.0.3] - 2025-04-15
 
 ### Fixed
