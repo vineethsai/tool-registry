@@ -69,29 +69,29 @@ class TestEndToEndFlow:
                     
                     # Mock auth service
                     mock_auth_service.verify_token = AsyncMock()
-                    mock_auth_service.verify_token.return_value = Agent(
+                    # Create a user agent without setting is_admin directly
+                    user_agent = Agent(
                         agent_id=test_agent_id,
                         name="Test User",
-                        roles=["user"],
-                        is_admin=False
+                        roles=["user"]  # is_admin property will return False based on roles
                     )
+                    mock_auth_service.verify_token.return_value = user_agent
                     
-                    # Mock admin verification
+                    # Mock admin verification and admin agent
                     admin_agent = Agent(
                         agent_id=admin_agent_id,
                         name="Admin User",
-                        roles=["admin", "tool_publisher", "policy_admin"],
-                        is_admin=True
+                        roles=["admin", "tool_publisher", "policy_admin"]  # is_admin property will return True
                     )
-                    mock_auth_service.is_admin = MagicMock(return_value=True)
+                    # Use side_effect function to determine admin status
+                    mock_auth_service.is_admin = MagicMock(side_effect=lambda agent: "admin" in agent.roles)
                     
                     # Setup for user registration
                     async def mock_register_agent(*args, **kwargs):
                         return Agent(
                             agent_id=test_agent_id,
                             name="Test User",
-                            roles=["user"],
-                            is_admin=False
+                            roles=["user"]
                         )
                     
                     mock_auth_service.register_agent = AsyncMock(side_effect=mock_register_agent)

@@ -68,7 +68,12 @@ class TestAPIMonitoringAndRateLimiting:
             description="Tool for monitoring tests",
             api_endpoint="https://api.example.com/monitored",
             auth_method="API_KEY",
-            version="1.0.0"
+            auth_config={},  # Initialize auth_config
+            params={},       # Initialize params
+            version="1.0.0",
+            tags=[],         # Initialize tags
+            owner_id=test_agent.agent_id,  # Set owner_id to fix the integrity constraint
+            allowed_scopes=[]  # Initialize allowed_scopes
         )
         db_session.add(test_tool)
         
@@ -104,13 +109,13 @@ class TestAPIMonitoringAndRateLimiting:
                     return Agent(
                         agent_id=self.test_agent_id,
                         name="Test User",
-                        roles=["user"],
-                        is_admin=False
+                        roles=["user"]  # is_admin property will be derived from roles
                     )
                 return None
             
             mock_auth.verify_token = AsyncMock(side_effect=mock_verify_token)
-            mock_auth.is_admin = MagicMock(return_value=False)
+            # Use side_effect to determine if agent is admin based on roles
+            mock_auth.is_admin = MagicMock(side_effect=lambda agent: "admin" in agent.roles)
             
             yield mock_auth
     
