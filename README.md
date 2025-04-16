@@ -91,6 +91,50 @@ When running with Docker Compose, the Postman documentation is available at http
 
 See [Postman Documentation](postman/README.md) for more details on using the collection.
 
+## CI/CD Pipeline
+
+This project uses GitHub Actions for continuous integration and deployment:
+
+### Workflow Overview
+
+1. **Testing**: Runs all tests with pytest on every push and pull request
+2. **Security Scanning**: Scans Docker images for vulnerabilities using Trivy
+3. **Docker Image Building**: Builds and pushes Docker images to GitHub Container Registry
+4. **Release Creation**: Creates GitHub releases with release notes when code is merged to main
+
+### Docker Images
+
+Docker images are automatically published to GitHub Container Registry (ghcr.io) in these scenarios:
+
+- **Development Builds**: When code is pushed to the `develop` branch, tagged as `latest-dev`
+- **Release Builds**: When code is pushed to the `main` branch, tagged according to the version in `build_release.sh`
+
+### Using the Docker Images
+
+To pull and run the latest release:
+
+```bash
+docker pull ghcr.io/yourusername/tool-registry:1.0.1
+# or
+docker-compose up -d
+```
+
+### Development Workflow
+
+1. Create a feature branch from `develop` (naming convention: `feature/your-feature-name`)
+2. Make your changes and commit them
+3. Open a pull request to `develop`
+4. Ensure all tests pass and security scans complete successfully
+5. After review, merge to `develop` for integration testing
+6. When ready for release, merge `develop` to `main` to trigger a release build
+
+### Pull Request Automation
+
+Pull requests are automatically labeled based on:
+- Branch name patterns (e.g., `feature/*`, `bugfix/*`)
+- Changed files (component labels)
+- PR size (lines of code)
+
 ## Usage Examples
 
 ### Register a Tool

@@ -1,0 +1,26 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Tool Registry Documentation
+    url: https://github.com/yourusername/tool-registry/blob/main/README.md
+    about: Please check our documentation before creating an issue
+    
+# Configure templates
+issue_templates:
+  - template_name: bug_report.md
+    name: Bug Report
+    description: Report a bug to help us improve
+    title: "[BUG] "
+    labels: ["bug", "triage"]
+  
+  - template_name: feature_request.md
+    name: Feature Request
+    description: Suggest an idea for this project
+    title: "[FEATURE] "
+    labels: ["enhancement"]
+    
+  - template_name: security_issue.md
+    name: Security Issue
+    description: Report a security vulnerability
+    title: "[SECURITY] "
+    labels: ["security", "triage"]
+    assignees: ["security-team"] 

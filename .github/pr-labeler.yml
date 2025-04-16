@@ -1,0 +1,61 @@
+# PR Labeler Configuration
+# Used by .github/workflows/pr-labeler.yml to automatically label PRs
+
+# Type labels
+feature:
+  - 'feature/*'
+  - 'feat/*'
+
+bugfix:
+  - 'fix/*'
+  - 'bugfix/*'
+  - 'bug/*'
+
+documentation:
+  - 'docs/*'
+  - 'documentation/*'
+
+enhancement:
+  - 'enhancement/*'
+  - 'improve/*'
+  - 'improvement/*'
+
+refactor:
+  - 'refactor/*'
+
+test:
+  - 'test/*'
+  - 'testing/*'
+
+# Component labels
+component/api:
+  - changed-files:
+    - any-glob-to-any-file: 'tool_registry/api/**/*'
+
+component/auth:
+  - changed-files:
+    - any-glob-to-any-file: 'tool_registry/auth/**/*'
+
+component/models:
+  - changed-files:
+    - any-glob-to-any-file: 'tool_registry/models/**/*'
+
+component/core:
+  - changed-files:
+    - any-glob-to-any-file: 'tool_registry/core/**/*'
+
+component/credential:
+  - changed-files: 
+    - any-glob-to-any-file: 'tool_registry/credential_vendor.py'
+
+component/docker:
+  - changed-files:
+    - any-glob-to-any-file: 
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'docker-compose.*.yml'
+      - 'build_release.sh'
+
+component/ci-cd:
+  - changed-files:
+    - any-glob-to-any-file: '.github/workflows/**' 
