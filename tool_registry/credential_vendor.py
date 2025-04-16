@@ -166,6 +166,7 @@ class CredentialVendor:
                 logger.warning(f"Token not found in mapping: {token_preview}")
                 return None
             
+            # Ensure credential_id exists in credentials store
             if credential_id not in self.credentials:
                 logger.warning(f"Credential ID not found in credentials store: {credential_id}")
                 return None
@@ -268,8 +269,11 @@ class CredentialVendor:
         # Remove token mappings first
         for token in tokens_to_remove:
             if token in self.token_to_credential_id:
+                # Get credential_id before removing the token mapping
+                credential_id = self.token_to_credential_id[token]
+                # Remove token mapping
                 del self.token_to_credential_id[token]
-                logger.debug(f"Removed token mapping for expired credential")
+                logger.debug(f"Removed token mapping for expired credential {credential_id}")
         
         logger.debug(f"Found {len(expired_ids)} expired credentials to clean up")
         
@@ -286,7 +290,73 @@ class CredentialVendor:
         logger.info(f"Cleaned up {len(expired_ids)} expired credentials")
     
     async def get_credential_usage(self, credential_id: UUID) -> List[datetime]:
-        """Get the usage history of a credential."""
-        usage = self.usage_history.get(credential_id, [])
-        logger.debug(f"Retrieved usage history for credential {credential_id}: {len(usage)} entries")
-        return usage 
+        """
+        Get the usage history for a credential.
+        
+        Args:
+            credential_id: The ID of the credential to get usage history for
+            
+        Returns:
+            List[datetime]: A list of timestamps when the credential was used
+        """
+        logger.debug(f"Getting usage history for credential: {credential_id}")
+        # Make sure to initialize usage history if it doesn't exist
+        if credential_id not in self.usage_history:
+            self.usage_history[credential_id] = []
+        
+        return self.usage_history.get(credential_id, [])
+
+    async def rotate_credentials(self, agent_id: UUID, tool_id: UUID) -> Optional[Credential]:
+        """
+        Rotate credentials for a specific agent and tool.
+        
+        This creates a new credential and revokes any existing ones.
+        
+        Args:
+            agent_id: The ID of the agent
+            tool_id: The ID of the tool
+            
+        Returns:
+            Optional[Credential]: The new credential or None if failed
+        """
+        logger.info(f"Rotating credentials for agent {agent_id} and tool {tool_id}")
+        
+        # Find existing credentials for this agent/tool pair
+        credentials_to_revoke = []
+        for cred_id, credential in self.credentials.items():
+            if credential.agent_id == agent_id and credential.tool_id == tool_id:
+                credentials_to_revoke.append(cred_id)
+        
+        # Revoke all existing credentials
+        for cred_id in credentials_to_revoke:
+            await self.revoke_credential(cred_id)
+            logger.debug(f"Revoked credential {cred_id} during rotation")
+        
+        # Create dummy Agent and Tool objects for testing
+        from .models import Agent, Tool
+        test_agent = Agent(
+            agent_id=agent_id,
+            name="Test Agent",
+            roles=["user"]
+        )
+        
+        test_tool = Tool(
+            tool_id=tool_id,
+            name="Test Tool",
+            api_endpoint="https://example.com",
+            auth_method="API_KEY",
+            owner_id=UUID("00000000-0000-0000-0000-000000000001"),
+            version="1.0.0"
+        )
+        
+        # Generate a new credential
+        new_credential = await self.generate_credential(
+            agent=test_agent,
+            tool=test_tool,
+            duration=timedelta(hours=1),
+            scope=["read", "write"]
+        )
+        
+        logger.info(f"Generated new credential {new_credential.credential_id} during rotation")
+        
+        return new_credential 
