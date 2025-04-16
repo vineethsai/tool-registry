@@ -1,37 +1,46 @@
 #!/bin/bash
+# push_to_github.sh - Script to push new version to GitHub and create a release
 
-# Make sure the script terminates on errors
-set -e
+set -e  # Exit on any error
 
-# Check if Git is installed
-if ! command -v git &> /dev/null; then
-    echo "Git is not installed. Please install Git and try again."
-    exit 1
-fi
+VERSION="1.0.3"
+BRANCH="main"
+REPO_URL="https://github.com/yourusername/tool-registry.git"  # Update this to your actual repository URL
 
-# Check if the repository has been initialized
-if [ ! -d .git ]; then
-    echo "Initializing Git repository..."
-    git init
-fi
+echo "Preparing to push Tool Registry version $VERSION to GitHub..."
 
-# Check if a remote named 'origin' exists
-if ! git remote | grep -q "^origin$"; then
-    echo "Please enter the GitHub repository URL (e.g., https://github.com/yourusername/tool-registry.git):"
-    read repo_url
-    git remote add origin $repo_url
-fi
+# Ensure we're on the correct branch
+git checkout $BRANCH || { echo "Error: Failed to checkout branch $BRANCH"; exit 1; }
 
-# Add all files
+# Pull latest changes to avoid conflicts
+git pull origin $BRANCH || { echo "Warning: Failed to pull latest changes. Continuing anyway..."; }
+
+# Add all changes
 git add .
 
 # Commit changes
-echo "Enter a commit message (e.g., 'Updated documentation and README'):"
-read commit_message
-git commit -m "$commit_message"
+git commit -m "Release v$VERSION: Improved test reliability and mock implementations"
 
 # Push to GitHub
-echo "Pushing to GitHub..."
-git push -u origin main || git push -u origin master
+git push origin $BRANCH || { echo "Error: Failed to push to GitHub"; exit 1; }
 
-echo "Successfully pushed to GitHub!" 
+# Create a tag for the release
+git tag -a "v$VERSION" -m "Tool Registry v$VERSION"
+git push origin "v$VERSION" || { echo "Error: Failed to push tag to GitHub"; exit 1; }
+
+# Create GitHub release using the GitHub CLI (requires gh to be installed)
+if command -v gh &> /dev/null; then
+    echo "Creating GitHub release using gh CLI..."
+    gh release create "v$VERSION" \
+        --title "Tool Registry v$VERSION" \
+        --notes-file RELEASE_NOTES.md
+else
+    echo "GitHub CLI (gh) not found. Skipping automatic release creation."
+    echo "Please create the release manually in the GitHub web interface."
+fi
+
+echo ""
+echo "Tool Registry version $VERSION has been pushed to GitHub."
+echo "Release tag: v$VERSION"
+echo ""
+echo "Docker image should now be built automatically by GitHub Actions." 

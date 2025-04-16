@@ -15,6 +15,19 @@ Tool Registry is a comprehensive system for managing, securing, and controlling 
 - **Rate Limiting**: Set and enforce usage limits per agent or policy
 - **Enhanced Logging**: Comprehensive logging for rate limiting and credential operations
 - **API Integration**: RESTful API for seamless integration
+- **Improved Test Reliability**: Robust testing framework with consistent mock implementations
+
+## Latest Updates (v1.0.3)
+
+The latest release (v1.0.3) focuses on improving the stability and reliability of the test suite:
+
+- Fixed end-to-end test failures in the tool registration and discovery flow
+- Enhanced mock implementations for better alignment with API behavior
+- Standardized UUID handling with consistent string conversion
+- Added required fields in mock responses for complete testing
+- Improved test data consistency
+
+For full details, see the [CHANGELOG.md](CHANGELOG.md) and [RELEASE_NOTES.md](RELEASE_NOTES.md).
 
 ## Getting Started
 

@@ -334,57 +334,80 @@ auth_service.update_policy(
 
 ## Testing Issues
 
-### Issue: Test Database Setup
+### End-to-End Test Failures
 
-**Symptoms:**
-- Tests fail with database errors
-- Inconsistent test results
+If you encounter issues with end-to-end tests, particularly in the test_end_to_end_flows.py file, check the following:
 
-**Solutions:**
-1. Use in-memory database for tests:
-   ```python
-   @pytest.fixture
-   def db():
-       # Use in-memory SQLite for tests
-       db = Database("sqlite:///:memory:")
-       db.init_db()
-       yield db
-   ```
+1. **datetime import issues**:
+   - Ensure you're importing `datetime` and `timedelta` correctly from the `datetime` module
+   - Check that datetime function calls use the proper format: `datetime.now()` not `datetime.datetime.now()`
 
-2. Ensure database cleanup after tests:
-   ```python
-   @pytest.fixture(autouse=True)
-   def cleanup_db(db):
-       yield
-       # Drop all tables after test
-       Base.metadata.drop_all(bind=db.engine)
-   ```
+2. **Mock Tool object handling**:
+   - When mocking the `register_tool` function, make sure it can handle both Tool objects and dictionaries
+   - Include proper type checking with `hasattr(tool_data, 'name')` for Tool objects
 
-### Issue: Mock Authentication in Tests
+3. **Missing required fields in responses**:
+   - All tool responses should include the `is_active` field
+   - Include timestamps: `created_at` and `updated_at`
+   - Ensure all UUIDs are converted to strings before returning
 
-**Symptoms:**
-- Authentication failures during tests
-- Unable to test protected endpoints
+4. **Mock function parameters**:
+   - For `mock_list_tools` function, don't include a `self` parameter if not needed
+   - Consider using `*args, **kwargs` to handle different parameter combinations
 
-**Solution:**
-Create a test authentication helper:
+5. **Test data consistency**:
+   - Store test tools in a list like `self.test_tools` for better tracking
+   - Make sure mock functions reference and update this list consistently
+
+### Example Fix for mock_register_tool
+
+If you're seeing errors related to Tool object handling, update your mock implementation:
 
 ```python
-@pytest.fixture
-def auth_headers():
-    # Create mock JWT token for testing
-    from tool_registry.auth.jwt import create_access_token
+async def mock_register_tool(tool_data, **kwargs):
+    new_id = str(uuid.uuid4())
+    now = datetime.now()
     
-    # Create test user
-    test_user = {"sub": "test_user", "scopes": ["admin"]}
-    token = create_access_token(test_user)
+    # Handle Tool objects or dictionaries
+    if hasattr(tool_data, 'name'):
+        # It's a Tool object
+        tool_name = tool_data.name
+        tool_description = tool_data.description
+        tool_version = tool_data.version
+        
+        # Extract metadata if available
+        tool_metadata = {}
+        if hasattr(tool_data, 'tool_metadata') and tool_data.tool_metadata:
+            tool_metadata = tool_data.tool_metadata
+    else:
+        # It's a dictionary
+        tool_name = tool_data.get("name", "Unknown Tool")
+        tool_description = tool_data.get("description", "")
+        tool_version = tool_data.get("version", "1.0.0")
+        tool_metadata = tool_data.get("tool_metadata", {})
     
-    return {"Authorization": f"Bearer {token}"}
-
-# Use in tests
-def test_protected_endpoint(client, auth_headers):
-    response = client.get("/protected/endpoint", headers=auth_headers)
-    assert response.status_code == 200
+    new_tool = {
+        "tool_id": new_id,
+        "name": tool_name,
+        "description": tool_description,
+        "version": tool_version,
+        "api_endpoint": f"/api/tools/{tool_name}",
+        "auth_method": "API_KEY",
+        "auth_config": {},
+        "params": {},
+        "tags": [],
+        "owner_id": str(self.admin_agent_id),
+        "allowed_scopes": ["read", "write", "execute"],
+        "is_active": True,
+        "created_at": now,
+        "updated_at": now,
+        "metadata": tool_metadata
+    }
+    
+    # Add to our list of tools
+    self.test_tools.append(new_tool)
+    
+    return new_tool
 ```
 
 ## Common Code Issues

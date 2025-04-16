@@ -1,5 +1,79 @@
 # Release Notes
 
+## Tool Registry v1.0.3 (2025-04-15)
+
+### Overview
+
+This release focuses on improving the stability and reliability of the test suite, particularly for end-to-end tests, and ensuring that the mock implementations accurately reflect the actual API behavior.
+
+### What's New
+
+1. **End-to-End Test Improvements**
+   - Fixed the `test_tool_registration_and_discovery_flow` test to properly handle Tool objects
+   - Resolved issues with tool metadata handling in tests
+   - Improved mock implementations for better alignment with API behavior
+
+2. **Bug Fixes**
+   - Fixed datetime import inconsistencies in test modules
+   - Added missing required fields (is_active, created_at, updated_at) in mock responses
+   - Resolved issues with mock tool list handling
+   - Fixed parameter definitions in mock functions
+
+3. **Standardization Improvements**
+   - Enhanced test data consistency by properly tracking test tools
+   - Standardized UUID handling with consistent string conversion
+   - Improved tool object mock implementation
+
+### Docker Updates
+
+The Docker container has been updated with version 1.0.3 and includes:
+- Updated version labeling in Dockerfile
+- Updated build and test scripts for easier releases
+
+### Installation and Upgrade
+
+#### Docker Installation
+
+```bash
+# Pull and run the latest version
+docker pull ghcr.io/yourusername/tool-registry:1.0.3
+docker-compose up -d
+```
+
+#### Upgrading from v1.0.2
+
+```bash
+# Pull the latest changes
+git pull
+
+# Build and start the updated containers
+./build_release.sh
+```
+
+### Testing Improvements
+
+1. **Testing with the Updated Mocks**
+   - Run the tool registration and discovery flow test:
+   ```
+   python -m pytest tests/test_end_to_end_flows.py::TestEndToEndFlows::test_tool_registration_and_discovery_flow -v
+   ```
+
+2. **Running All End-to-End Tests**
+   ```
+   python -m pytest tests/test_end_to_end_flows.py -v
+   ```
+
+### Known Issues
+
+- Some end-to-end tests still fail and will be addressed in future releases:
+  - The tool access flow test (`test_tool_access_flow`) fails with a 404 status code
+  - The policy management flow test (`test_policy_management_flow`) fails with validation errors
+  - The monitoring and analytics flow test (`test_monitoring_and_analytics_flow`) fails with a missing required timestamp
+
+### Contributors
+
+- Vineeth Sai Narajala
+
 ## Tool Registry v1.0.1 (2023-06-20)
 
 ### Overview
