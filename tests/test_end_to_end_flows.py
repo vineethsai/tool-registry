@@ -223,175 +223,133 @@ class TestEndToEndFlows:
     def setup_tool_registry_mock(self):
         """Set up mock for tool registry."""
         with patch('tool_registry.api.app.tool_registry') as mock_registry:
-            # Initialize test tools list
-            now = datetime.now()
+            # Set up mock for ToolRegistry class
+            tool_id = str(uuid.uuid4())
+            owner_id = str(uuid.uuid4())
             
-            # Create a sample tool with all required fields
             tool1 = {
-                "tool_id": str(uuid.uuid4()),
+                "tool_id": tool_id,
                 "name": "test_tool",
-                "description": "Test tool description",
-                "api_endpoint": "https://test.com/api",
-                "auth_method": "none",
-                "auth_config": {},
-                "params": {"input": "text"},
+                "description": "Test tool for end-to-end tests",
+                "api_endpoint": "https://test-tool.example.com/api",
+                "auth_method": "api_key",
+                "auth_config": {"headers": {"X-API-Key": ""}},
+                "params": {"text": {"type": "string"}},
                 "version": "1.0.0",
-                "tags": ["test"],
-                "owner_id": str(uuid.uuid4()),
-                "allowed_scopes": ["*"],
-                "created_at": now,
-                "updated_at": now,
+                "tags": ["test", "demo"],
+                "owner_id": owner_id,
+                "allowed_scopes": ["test:read", "test:write"],
+                "created_at": datetime.utcnow(),
+                "updated_at": datetime.utcnow(),
                 "is_active": True,
                 "metadata": {
                     "metadata_id": str(uuid.uuid4()),
-                    "tool_id": str(uuid.uuid4()),
-                    "schema_data": {},
-                    "inputs": {"text": {"type": "string"}},
-                    "outputs": {"result": {"type": "string"}},
+                    "tool_id": tool_id,
                     "schema_version": "1.0",
                     "schema_type": "openapi",
-                    "created_at": now,
-                    "updated_at": now,
-                    "provider": "test",
-                    "documentation_url": "https://test.com/docs"
+                    "schema_data": {
+                        "openapi": "3.0.0",
+                        "info": {"title": "Test Tool API", "version": "1.0.0"},
+                        "paths": {"/process": {"post": {"summary": "Process data"}}}
+                    },
+                    "inputs": {"text": {"type": "string", "description": "Input text to process"}},
+                    "outputs": {"result": {"type": "string", "description": "Processed result"}},
+                    "documentation_url": "https://test-tool.example.com/docs",
+                    "provider": "Test Provider",
+                    "tags": ["test", "api"],
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow()
                 }
             }
             
-            # Store as first tool in the list
+            # Store test tools in a list
             self.test_tools = [tool1]
             
-            # Mock registry methods
-            async def mock_register_tool(tool_data, **kwargs):
-                new_id = str(uuid.uuid4())
-                now = datetime.now()
-                
-                # Handle Tool objects or dictionaries
-                if hasattr(tool_data, 'name'):
-                    # It's a Tool object
-                    tool_name = tool_data.name
-                    tool_description = tool_data.description
-                    tool_version = tool_data.version
-                    
-                    # Extract metadata if available
-                    tool_metadata = {}
-                    if hasattr(tool_data, 'tool_metadata') and tool_data.tool_metadata:
-                        tool_metadata = tool_data.tool_metadata
-                else:
-                    # It's a dictionary
-                    tool_name = tool_data.get("name", "Unknown Tool")
-                    tool_description = tool_data.get("description", "")
-                    tool_version = tool_data.get("version", "1.0.0")
-                    tool_metadata = tool_data.get("tool_metadata", {})
-                
-                new_tool = {
-                    "tool_id": new_id,
-                    "name": tool_name,
-                    "description": tool_description,
-                    "version": tool_version,
-                    "api_endpoint": f"/api/tools/{tool_name}",
-                    "auth_method": "API_KEY",
-                    "auth_config": {},
-                    "params": {},
-                    "tags": [],
-                    "owner_id": str(self.admin_agent_id),
-                    "allowed_scopes": ["read", "write", "execute"],
-                    "is_active": True,
-                    "created_at": now,
-                    "updated_at": now,
-                    "metadata": tool_metadata
-                }
-                
-                # Add to our list of tools
-                self.test_tools.append(new_tool)
-                
-                return new_tool
+            # Mock the ToolRegistry.list_tools method
+            def mock_list_tools(*args, **kwargs):
+                return self.test_tools
             
-            async def mock_get_tool(tool_id, **kwargs):
-                # First check if we have this tool in our test_tools list
+            # Mock the ToolRegistry.get_tool method
+            def mock_get_tool(self_mock, tool_id):
+                # First check if tool exists in our test tools list
                 for tool in self.test_tools:
-                    if str(tool["tool_id"]) == str(tool_id):
-                        # Make sure the tool has is_active field
-                        if "is_active" not in tool:
-                            tool["is_active"] = True
+                    if tool["tool_id"] == tool_id:
                         return tool
-                
-                # If not found but it's our initial test tool, return it
-                if str(tool_id) == str(self.test_tool_id):
-                    tool1["is_active"] = True  # Make sure tool1 has is_active field
+                        
+                # If not found but matches our initial test tool ID, return tool1
+                if tool_id == tool1["tool_id"]:
                     return tool1
-                
-                # For tools not found, return a default
+                    
+                # For any tools not found, return a default tool
                 return {
-                    "tool_id": str(tool_id),
-                    "name": "Flow Test Tool",
-                    "description": "A tool for testing end-to-end flows",
+                    "tool_id": tool_id,
+                    "name": f"Tool {tool_id[:8]}",
+                    "description": "Default tool description",
                     "version": "1.0.0",
-                    "api_endpoint": "/api/tools/flow-test-tool",
-                    "auth_method": "API_KEY",
+                    "api_endpoint": "https://example.com/api",
+                    "auth_method": "none",
                     "auth_config": {},
                     "params": {},
-                    "tags": ["test", "flow"],
-                    "owner_id": str(self.admin_agent_id),
-                    "allowed_scopes": ["read", "write", "execute"],
-                    "is_active": True,  # Add is_active field
+                    "tags": ["default"],
+                    "owner_id": owner_id,
+                    "allowed_scopes": [],
                     "metadata": {
+                        "metadata_id": str(uuid.uuid4()),
+                        "tool_id": tool_id,
                         "schema_version": "1.0",
                         "schema_type": "openapi",
-                        "schema_data": {},
-                        "inputs": {"text": {"type": "string"}},
-                        "outputs": {"result": {"type": "string"}},
-                        "documentation_url": "https://example.com/docs",
-                        "provider": "test",
-                        "tags": ["test", "flow"]
+                        "schema_data": {"paths": {}},
+                        "inputs": {},
+                        "outputs": {},
+                        "documentation_url": "https://example.com"
                     }
                 }
             
-            async def mock_list_tools(*args, **kwargs):
-                """Mock of list_tools to return known tools."""
-                now = datetime.now()
-                
-                # Ensure each tool has all required fields including timestamps
-                for tool in self.test_tools:
-                    if "created_at" not in tool:
-                        tool["created_at"] = now
-                    if "updated_at" not in tool:
-                        tool["updated_at"] = now
-                    if "is_active" not in tool:
-                        tool["is_active"] = True
-                    
-                    # Ensure metadata has all required fields
-                    if "metadata" in tool:
-                        metadata = tool["metadata"]
-                        if not metadata:
-                            metadata = {}
-                        
-                        if "metadata_id" not in metadata:
-                            metadata["metadata_id"] = str(uuid.uuid4())
-                        if "tool_id" not in metadata:
-                            metadata["tool_id"] = tool.get("tool_id", str(uuid.uuid4()))
-                        if "schema_data" not in metadata:
-                            metadata["schema_data"] = {}
-                        if "inputs" not in metadata:
-                            metadata["inputs"] = {"text": {"type": "string"}}
-                        if "outputs" not in metadata:
-                            metadata["outputs"] = {"result": {"type": "string"}}
-                        if "schema_version" not in metadata:
-                            metadata["schema_version"] = "1.0"
-                        if "schema_type" not in metadata:
-                            metadata["schema_type"] = "openapi"
-                        if "created_at" not in metadata:
-                            metadata["created_at"] = now
-                        if "updated_at" not in metadata:
-                            metadata["updated_at"] = now
-                        if "provider" not in metadata:
-                            metadata["provider"] = "test"
-                        
-                        tool["metadata"] = metadata
-                
+            # Mock the ToolRegistry.search_tools method
+            def mock_search_tools(*args, **kwargs):
                 return self.test_tools
             
-            async def mock_search_tools(query=None, **kwargs):
-                return self.test_tools
+            # Mock the ToolRegistry.register_tool method
+            def mock_register_tool(self_mock, tool_data):
+                new_tool_id = str(uuid.uuid4())
+                
+                if hasattr(tool_data, 'name'):  # If it's a Tool object
+                    name = tool_data.name
+                    description = tool_data.description
+                    version = tool_data.version
+                    tool_metadata = tool_data.tool_metadata
+                else:  # If it's a dict
+                    name = tool_data.get("name", "Default Tool Name")
+                    description = tool_data.get("description", "Default Tool Description")
+                    version = tool_data.get("version", "1.0.0")
+                    tool_metadata = tool_data.get("metadata", {})
+                
+                new_tool = {
+                    "tool_id": new_tool_id,
+                    "name": name,
+                    "description": description,
+                    "api_endpoint": "https://example.com/api",
+                    "auth_method": "none",
+                    "auth_config": {},
+                    "params": {},
+                    "version": version,
+                    "tags": ["new"],
+                    "owner_id": owner_id,
+                    "allowed_scopes": [],
+                    "created_at": datetime.utcnow(),
+                    "updated_at": datetime.utcnow(),
+                    "is_active": True,
+                    "metadata": tool_metadata
+                }
+                
+                # Add the new tool to our test tools list
+                self.test_tools.append(new_tool)
+                
+                return {
+                    "tool_id": new_tool_id,
+                    "name": name,
+                    "version": version
+                }
             
             mock_registry.register_tool = AsyncMock(side_effect=mock_register_tool)
             mock_registry.get_tool = AsyncMock(side_effect=mock_get_tool)

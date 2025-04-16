@@ -78,15 +78,16 @@ def monitor_request(func=None, endpoint=None):
                 try:
                     result = await f(*args, **kwargs)
                     status = 200
+                    monitoring.log_request(endpoint_path, method, status)
+                    latency = time.time() - start_time
+                    logger.info(f"{method} {endpoint_path} - {status} - {latency:.2f}s")
                     return result
                 except Exception as e:
                     status = 500
                     monitoring.log_error(endpoint_path, method, str(e))
-                    raise
-                finally:
                     latency = time.time() - start_time
-                    monitoring.log_request(endpoint_path, method, status)
-                    logger.info(f"{method} {endpoint_path} - {status} - {latency:.2f}s")
+                    logger.info(f"{method} {endpoint_path} - {status} - {latency:.2f}s - Error: {str(e)}")
+                    raise
             
             return wrapper
         return decorator
@@ -101,15 +102,16 @@ def monitor_request(func=None, endpoint=None):
             try:
                 result = await func(*args, **kwargs)
                 status = 200
+                monitoring.log_request(endpoint_path, method, status)
+                latency = time.time() - start_time
+                logger.info(f"{method} {endpoint_path} - {status} - {latency:.2f}s")
                 return result
             except Exception as e:
                 status = 500
                 monitoring.log_error(endpoint_path, method, str(e))
-                raise
-            finally:
                 latency = time.time() - start_time
-                monitoring.log_request(endpoint_path, method, status)
-                logger.info(f"{method} {endpoint_path} - {status} - {latency:.2f}s")
+                logger.info(f"{method} {endpoint_path} - {status} - {latency:.2f}s - Error: {str(e)}")
+                raise
         
         return wrapper
 

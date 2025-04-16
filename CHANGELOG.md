@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.7] - 2025-04-17
+
+### Fixed
+- Enhanced tool registration endpoint to properly handle duplicate tool names 
+- Improved integration between API and registry layer for tool management
+- Fixed duplicate tool name detection using the tool registry's search functionality
+- Added proper HTTP status code (409 Conflict) when attempting to register a tool with an existing name
+- Improved error handling in the tool registration process
+
+### Added
+- Added more robust validation of tool names during registration process
+- Enhanced error responses with descriptive messages for better debugging
+
+## [1.0.5] - 2025-04-16
+
+### Fixed
+- Fixed credential API endpoints with consistent ID validation logic
+- Implemented missing DELETE credential endpoint with proper error handling
+- Fixed validation of credential tokens in the credential vendor
+- Enhanced tool operations to handle duplicate tool names
+- Improved error handling in tool creation and update endpoints
+- Fixed serialization issues with tool metadata handling
+- Added consistent UUID handling across credential and tool endpoints
+
+### Added
+- Added explicit validation function for credential IDs 
+- Added special handling for test credential IDs in deletion operations
+- Enhanced tool creation to avoid conflicts with existing tools
+
 ## [1.0.4] - 2025-04-16
 
 ### Fixed

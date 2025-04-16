@@ -17,15 +17,14 @@ Tool Registry is a comprehensive system for managing, securing, and controlling 
 - **API Integration**: RESTful API for seamless integration
 - **Improved Test Reliability**: Robust testing framework with consistent mock implementations
 
-## Latest Updates (v1.0.3)
+## Latest Updates (v1.0.7)
 
-The latest release (v1.0.3) focuses on improving the stability and reliability of the test suite:
+The latest release (v1.0.7) focuses on improving tool registration and handling duplicate tools:
 
-- Fixed end-to-end test failures in the tool registration and discovery flow
-- Enhanced mock implementations for better alignment with API behavior
-- Standardized UUID handling with consistent string conversion
-- Added required fields in mock responses for complete testing
-- Improved test data consistency
+- Enhanced tool registration endpoint to properly handle duplicate tool names
+- Added proper HTTP status code (409 Conflict) for duplicate tool name attempts
+- Improved error handling and validation in the tool registration process
+- Enhanced integration between API endpoints and core registry layer
 
 For full details, see the [CHANGELOG.md](CHANGELOG.md) and [RELEASE_NOTES.md](RELEASE_NOTES.md).
 

@@ -6,6 +6,13 @@ Welcome to the documentation for the GenAI Tool Registry. This directory contain
 
 > **Important Note**: Authentication is currently disabled for developer convenience. The API endpoints are accessible without authentication, though the credential management system remains in place. This is intended for development and testing purposes only.
 
+## Latest Updates (v1.0.7)
+
+The latest update includes:
+- Enhanced tool registration with proper duplicate name handling
+- Improved error handling with appropriate HTTP status codes (409 Conflict)
+- Better integration between API layer and registry components
+
 ## Contents
 
 - [Installation Guide](installation.md): Instructions for installing and configuring the registry
