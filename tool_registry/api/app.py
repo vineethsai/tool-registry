@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 import jwt
 from fastapi.responses import JSONResponse
 import json
+from fastapi.middleware.cors import CORSMiddleware
 
 from ..core.registry import ToolRegistry
 from ..core.auth import AuthService, AgentAuth, JWTToken
@@ -136,6 +137,28 @@ secret_manager = SecretManager(settings)
 monitoring = Monitoring()
 redis_client = Redis.from_url(settings.redis_url) if settings.redis_url else None
 rate_limiter = RateLimiter(redis_client=redis_client, rate_limit=settings.rate_limit, time_window=settings.rate_limit_window)
+
+# Configure CORS middleware with settings from configuration
+origins = settings.cors_allowed_origins.split(",")
+# Add 127.0.0.1 equivalents for each localhost entry
+localhost_origins = [origin for origin in origins if "localhost" in origin]
+for origin in localhost_origins:
+    origins.append(origin.replace("localhost", "127.0.0.1"))
+
+# Add regex pattern for any localhost port
+allow_origin_regex = r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$"
+
+logger.info(f"Configuring CORS with allowed origins: {origins}")
+logger.info(f"Allowing localhost with any port via regex: {allow_origin_regex}")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_origin_regex=allow_origin_regex,
+    allow_credentials=settings.cors_allow_credentials,
+    allow_methods=settings.cors_allowed_methods.split(","),
+    allow_headers=settings.cors_allowed_headers.split(",") if settings.cors_allowed_headers != "*" else ["*"],
+)
 
 # Create database connection
 database = Database(settings.database_url)

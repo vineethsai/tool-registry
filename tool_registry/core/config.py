@@ -73,6 +73,19 @@ class Settings(BaseSettings):
     rate_limit: int = 100  # requests per time window
     rate_limit_window: int = 60  # time window in seconds
     
+    # CORS Settings
+    # Comma-separated list of allowed origins
+    cors_allowed_origins: str = Field(
+        default="http://localhost:3000,http://localhost:8000,http://localhost:8080",
+        description="Comma-separated list of allowed origins for CORS"
+    )
+    # Whether to allow credentials
+    cors_allow_credentials: bool = True
+    # Comma-separated list of allowed methods
+    cors_allowed_methods: str = "GET,POST,PUT,DELETE,OPTIONS"
+    # Comma-separated list of allowed headers
+    cors_allowed_headers: str = "*"
+    
     # Logging level - will be used to set the app logger level
     log_level: str = Field(default="INFO")
     

@@ -255,9 +255,32 @@ isort tool_registry tests
 - `SECRET_KEY` / `JWT_SECRET_KEY`: Secret key for JWT token generation
 - `DEBUG`: Not explicitly used, `LOG_LEVEL` controls verbosity.
 - `LOG_LEVEL`: Logging level (INFO, DEBUG, WARNING, ERROR)
-- `ALLOWED_ORIGINS`: CORS allowed origins
+- `CORS_ALLOWED_ORIGINS`: Comma-separated list of allowed origins for CORS (e.g., "http://localhost:3000,http://localhost:8080")
+- `CORS_ALLOW_CREDENTIALS`: Whether to allow credentials in CORS requests (true/false)
+- `CORS_ALLOWED_METHODS`: Comma-separated list of allowed HTTP methods (e.g., "GET,POST,PUT,DELETE,OPTIONS")
+- `CORS_ALLOWED_HEADERS`: Comma-separated list of allowed headers or "*" for all headers
 - `VAULT_URL`, `VAULT_TOKEN`: Optional Vault configuration
 - `REDIS_URL`: Required for rate limiting
+
+### CORS Configuration
+
+The API supports CORS (Cross-Origin Resource Sharing) to allow requests from different origins. By default, it's configured to allow requests from common localhost development servers. You can customize the CORS configuration through environment variables:
+
+```bash
+# In your .env file
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:8080
+CORS_ALLOW_CREDENTIALS=true
+CORS_ALLOWED_METHODS=GET,POST,PUT,DELETE,OPTIONS
+CORS_ALLOWED_HEADERS=*
+```
+
+The API automatically adds 127.0.0.1 equivalents for each localhost entry, so you don't need to specify both. Additionally, a regex pattern is used to match any port on localhost or 127.0.0.1:
+
+```
+^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$
+```
+
+This means that any origin with `http://localhost:XXXX` or `https://localhost:XXXX` (where XXXX is any port number) will be allowed, making development with dynamic ports much easier.
 
 ## Contributing
 
