@@ -1,4 +1,3 @@
-
 import { 
   Tool, 
   ToolDetails, 
@@ -24,8 +23,17 @@ export async function getTools(page = 1, pageSize = 20, tags?: string[]): Promis
     throw new Error(`Error fetching tools: ${response.statusText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly, not wrapped in a data field
+  const items = await response.json();
+  
+  // Create a paginated response object
+  return {
+    items,
+    total: items.length,
+    page,
+    page_size: pageSize,
+    pages: Math.ceil(items.length / pageSize)
+  };
 }
 
 export async function searchTools(query: string, page = 1, pageSize = 20): Promise<PaginatedResponse<Tool>> {
@@ -35,8 +43,17 @@ export async function searchTools(query: string, page = 1, pageSize = 20): Promi
     throw new Error(`Error searching tools: ${response.statusText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly, not wrapped in a data field
+  const items = await response.json();
+  
+  // Create a paginated response object
+  return {
+    items,
+    total: items.length,
+    page,
+    page_size: pageSize,
+    pages: Math.ceil(items.length / pageSize)
+  };
 }
 
 export async function getTool(toolId: string): Promise<ToolDetails> {
@@ -46,25 +63,47 @@ export async function getTool(toolId: string): Promise<ToolDetails> {
     throw new Error(`Error fetching tool: ${response.statusText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly
+  return await response.json();
 }
 
 export async function createTool(toolData: Omit<ToolDetails, 'tool_id' | 'created_at' | 'updated_at' | 'owner_id' | 'is_active'>): Promise<ToolDetails> {
+  // Use the existing admin agent ID
+  const adminAgentId = "00000000-0000-0000-0000-000000000003";
+
+  // Format the request data to match what the backend API expects
+  const formattedData = {
+    name: toolData.name,
+    description: toolData.description,
+    version: toolData.version || "1.0.0",
+    owner_id: adminAgentId, // Use the known admin agent ID
+    tool_metadata: {
+      api_endpoint: toolData.api_endpoint,
+      auth_method: toolData.auth_method,
+      auth_config: toolData.auth_config || {},
+      params: toolData.params || {},
+      tags: toolData.tags || [],
+      allowed_scopes: toolData.allowed_scopes || ["read"]
+    }
+  };
+
+  console.log("Sending tool creation request:", formattedData);
+
   const response = await fetch(`${API_URL}/tools`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
-    body: JSON.stringify(toolData)
+    body: JSON.stringify(formattedData)
   });
   
   if (!response.ok) {
-    throw new Error(`Error creating tool: ${response.statusText}`);
+    const errorText = await response.text();
+    throw new Error(`Error creating tool: ${errorText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly
+  return await response.json();
 }
 
 export async function updateTool(toolId: string, toolData: Partial<ToolDetails>): Promise<ToolDetails> {
@@ -80,8 +119,8 @@ export async function updateTool(toolId: string, toolData: Partial<ToolDetails>)
     throw new Error(`Error updating tool: ${response.statusText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly
+  return await response.json();
 }
 
 export async function deleteTool(toolId: string): Promise<void> {
@@ -103,8 +142,17 @@ export async function getPolicies(page = 1, pageSize = 20, toolId?: string): Pro
     throw new Error(`Error fetching policies: ${response.statusText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly, not wrapped in a data field
+  const items = await response.json();
+  
+  // Create a paginated response object
+  return {
+    items,
+    total: items.length,
+    page,
+    page_size: pageSize,
+    pages: Math.ceil(items.length / pageSize)
+  };
 }
 
 export async function getPolicy(policyId: string): Promise<Policy> {
@@ -114,8 +162,8 @@ export async function getPolicy(policyId: string): Promise<Policy> {
     throw new Error(`Error fetching policy: ${response.statusText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly
+  return await response.json();
 }
 
 export async function createPolicy(policyData: Omit<Policy, 'policy_id' | 'created_at' | 'updated_at'>): Promise<Policy> {
@@ -131,8 +179,8 @@ export async function createPolicy(policyData: Omit<Policy, 'policy_id' | 'creat
     throw new Error(`Error creating policy: ${response.statusText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly
+  return await response.json();
 }
 
 export async function updatePolicy(policyId: string, policyData: Partial<Policy>): Promise<Policy> {
@@ -148,8 +196,8 @@ export async function updatePolicy(policyId: string, policyData: Partial<Policy>
     throw new Error(`Error updating policy: ${response.statusText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly
+  return await response.json();
 }
 
 export async function deletePolicy(policyId: string): Promise<void> {
@@ -171,8 +219,17 @@ export async function getAgents(page = 1, pageSize = 20, agentType?: string): Pr
     throw new Error(`Error fetching agents: ${response.statusText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly, not wrapped in a data field
+  const items = await response.json();
+  
+  // Create a paginated response object
+  return {
+    items,
+    total: items.length,
+    page,
+    page_size: pageSize,
+    pages: Math.ceil(items.length / pageSize)
+  };
 }
 
 export async function getAgent(agentId: string): Promise<Agent> {
@@ -182,8 +239,8 @@ export async function getAgent(agentId: string): Promise<Agent> {
     throw new Error(`Error fetching agent: ${response.statusText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly
+  return await response.json();
 }
 
 export async function createAgent(agentData: Omit<Agent, 'agent_id' | 'created_at' | 'updated_at'>): Promise<Agent> {
@@ -199,8 +256,8 @@ export async function createAgent(agentData: Omit<Agent, 'agent_id' | 'created_a
     throw new Error(`Error creating agent: ${response.statusText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly
+  return await response.json();
 }
 
 export async function updateAgent(agentId: string, agentData: Partial<Agent>): Promise<Agent> {
@@ -287,8 +344,17 @@ export async function getAccessRequests(
     throw new Error(`Error fetching access requests: ${response.statusText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly, not wrapped in a data field
+  const items = await response.json();
+  
+  // Create a paginated response object
+  return {
+    items,
+    total: items.length,
+    page,
+    page_size: pageSize,
+    pages: Math.ceil(items.length / pageSize)
+  };
 }
 
 // Credentials API
@@ -311,8 +377,8 @@ export async function createCredential(credentialData: {
     throw new Error(`Error creating credential: ${response.statusText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly
+  return await response.json();
 }
 
 export async function getCredentials(
@@ -336,8 +402,17 @@ export async function getCredentials(
     throw new Error(`Error fetching credentials: ${response.statusText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly, not wrapped in a data field
+  const items = await response.json();
+  
+  // Create a paginated response object
+  return {
+    items,
+    total: items.length,
+    page,
+    page_size: pageSize,
+    pages: Math.ceil(items.length / pageSize)
+  };
 }
 
 export async function deleteCredential(credentialId: string): Promise<void> {
@@ -378,8 +453,17 @@ export async function getUsageLogs(
     throw new Error(`Error fetching usage logs: ${response.statusText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly, not wrapped in a data field
+  const items = await response.json();
+  
+  // Create a paginated response object
+  return {
+    items,
+    total: items.length,
+    page,
+    page_size: pageSize,
+    pages: Math.ceil(items.length / pageSize)
+  };
 }
 
 export async function getUsageStats(
@@ -410,8 +494,8 @@ export async function getUsageStats(
     throw new Error(`Error fetching usage statistics: ${response.statusText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly
+  return await response.json();
 }
 
 // Health check API
@@ -428,6 +512,6 @@ export async function getSystemHealth(): Promise<{
     throw new Error(`Error fetching system health: ${response.statusText}`);
   }
   
-  const responseData = await response.json();
-  return responseData.data;
+  // Get the response directly
+  return await response.json();
 }

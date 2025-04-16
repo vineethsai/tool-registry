@@ -1,4 +1,3 @@
-
 // Tool Types
 export interface Tool {
   tool_id: string;
@@ -23,6 +22,7 @@ export interface ToolDetails extends Tool {
   }>;
   owner_id: string;
   is_active: boolean;
+  allowed_scopes?: string[];
 }
 
 // Policy Types

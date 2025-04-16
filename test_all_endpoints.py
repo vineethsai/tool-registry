@@ -111,6 +111,67 @@ def run_all_tests():
     # 3. Tool Endpoints
     print_header("TOOL ENDPOINTS")
     
+    # Create a tool
+    unique_id = uuid.uuid4().hex[:8]
+    tool_data = {
+        "name": f"TestTool_{unique_id}",
+        "description": "Test tool for API testing",
+        "version": "1.0.0",
+        "tool_metadata": {
+            "schema_version": "1.0",
+            "schema_type": "openapi",
+            "schema_data": {
+                "openapi": "3.0.0",
+                "info": {
+                    "title": "Test Tool API",
+                    "version": "1.0.0",
+                    "description": "Test tool for API testing"
+                },
+                "paths": {
+                    "/test": {
+                        "get": {
+                            "summary": "Test endpoint",
+                            "responses": {
+                                "200": {
+                                    "description": "Successful response"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "inputs": {
+                "query": {
+                    "type": "string", 
+                    "description": "Input text to process"
+                }
+            },
+            "outputs": {
+                "result": {
+                    "type": "string", 
+                    "description": "Processed result"
+                }
+            },
+            "documentation_url": "https://docs.example.com/testtool",
+            "provider": "Test Provider",
+            "tags": ["test", "api"]
+        }
+    }
+    
+    create_tool_resp = run_test("Create Tool", "POST", "/tools", 200, 
+                              data=tool_data, headers=auth_headers)
+    
+    if create_tool_resp and create_tool_resp.status_code == 200:
+        try:
+            resp_json = create_tool_resp.json()
+            if isinstance(resp_json, dict):
+                created_tool_id = resp_json.get("tool_id")
+                print(f"Created tool with ID: {created_tool_id}")
+                if created_tool_id:
+                    test_tool_id = created_tool_id
+        except Exception as e:
+            print(f"Error processing tool creation response: {str(e)}")
+    
     # List tools
     run_test("List Tools", "GET", "/tools", 200, headers=auth_headers)
     
@@ -123,6 +184,30 @@ def run_all_tests():
     
     # 4. Agent Endpoints
     print_header("AGENT ENDPOINTS")
+    
+    # Create a test agent
+    unique_agent_id = uuid.uuid4().hex[:8]
+    agent_data = {
+        "name": f"TestAgent_{unique_agent_id}",
+        "description": "Test agent for API testing",
+        "roles": ["tool_user", "tool_publisher"],
+        "creator": "00000000-0000-0000-0000-000000000001",
+        "is_active": True
+    }
+    
+    create_agent_resp = run_test("Create Agent", "POST", "/agents", 200, 
+                               data=agent_data, headers=auth_headers)
+    
+    if create_agent_resp and create_agent_resp.status_code == 200:
+        try:
+            resp_json = create_agent_resp.json()
+            if isinstance(resp_json, dict):
+                created_agent_id = resp_json.get("agent_id")
+                print(f"Created agent with ID: {created_agent_id}")
+                if created_agent_id:
+                    test_agent_id = created_agent_id
+        except Exception as e:
+            print(f"Error processing agent creation response: {str(e)}")
     
     # List agents
     run_test("List Agents", "GET", "/agents", 200, headers=auth_headers)
@@ -246,6 +331,23 @@ def run_all_tests():
         tool_access_data = [{"duration": 30, "scopes": ["read"]}]  # List format required
         run_test(f"Request Tool Access", "POST", f"/tools/{test_tool_id}/access", 200,
                data=tool_access_data, headers=auth_headers)
+    
+    # 10. Cleanup
+    print_header("CLEANUP")
+    
+    # Delete credential (if created)
+    if create_cred_resp and create_cred_resp.status_code == 200:
+        try:
+            cred_resp_json = create_cred_resp.json()
+            cred_id = cred_resp_json.get("credential_id")
+            if cred_id:
+                run_test("Delete Credential", "DELETE", f"/credentials/{cred_id}", 200, headers=auth_headers)
+        except:
+            pass
+    
+    # Delete policy (if created)
+    if test_policy_id:
+        run_test("Delete Policy", "DELETE", f"/policies/{test_policy_id}", 200, headers=auth_headers)
     
     # Print summary
     print_header("TEST SUMMARY")
