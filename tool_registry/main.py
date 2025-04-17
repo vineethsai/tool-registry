@@ -8,6 +8,7 @@ and policy enforcement.
 
 from fastapi import FastAPI, Depends, HTTPException, status, Query, Security, Header
 from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
+from fastapi.middleware.cors import CORSMiddleware
 from .models import Tool as DBTool, Agent as DBAgent, Policy as DBPolicy, Credential as DBCredential, AccessLog as DBAccessLog, ToolMetadata as DBToolMetadata
 from .auth import authenticate_agent, create_access_token, get_current_agent, register_agent
 from .authorization import AuthorizationService
@@ -44,6 +45,18 @@ app = FastAPI(
     title="Tool Registry API",
     description="API for managing and accessing tools in the Tool Registry system",
     version="1.0.0"
+)
+
+# Add CORS middleware
+origins_str = os.getenv("CORS_ORIGINS", "http://localhost:80,http://localhost:8080,http://frontend:80")
+origins = origins_str.split(",")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # Initialize services

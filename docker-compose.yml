@@ -1,5 +1,5 @@
-# Docker Compose file for Tool Registry API
-# Includes app (API), PostgreSQL database, Redis, and documentation server
+# Docker Compose file for Tool Registry API - Production
+# Includes app (API), PostgreSQL database, Redis, documentation server and frontend
 
 version: '3.8'
 
@@ -8,22 +8,30 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: tool-registry:1.0.9  # Updated to version 1.0.9 with comprehensive API testing
+    image: tool-registry:2.0.0  # Updated to version 2.0.0 - Production-ready
     container_name: tool-registry-app
     ports:
       - "8000:8000"
     environment:
       - DATABASE_URL=postgresql://postgres:password@db:5432/toolregistry
       - REDIS_URL=redis://redis:6379/0
-      - JWT_SECRET_KEY=mydevsecretkey
+      - APP_VERSION=2.0.0
+      - DEBUG=false
+      - AUTH_DISABLED=true
+      - METRICS_ENABLED=true
       - LOG_LEVEL=INFO
+      # Add CORS configuration to allow frontend requests
+      - CORS_ORIGINS=http://localhost:80,http://frontend:80,http://localhost
+      - TEST_MODE=false
     volumes:
       - ./data:/app/data
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -55,6 +63,7 @@ services:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    command: redis-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
@@ -82,6 +91,19 @@ services:
       timeout: 10s
       retries: 3
       start_period: 20s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./genai-tool-explorer
+      dockerfile: Dockerfile
+    container_name: tool-registry-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - app
+    environment:
+      - VITE_API_URL=http://localhost:8000
     restart: unless-stopped
 
 volumes:

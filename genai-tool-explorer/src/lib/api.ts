@@ -11,8 +11,8 @@ import {
   UsageStats
 } from "./types";
 
-// Updated API URL to point to the local backend server
-const API_URL = "http://localhost:8000"; 
+// Use environment variable or fallback to relative path in production
+const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 // Tool API
 export async function getTools(page = 1, pageSize = 20, tags?: string[]): Promise<PaginatedResponse<Tool>> {
@@ -68,23 +68,21 @@ export async function getTool(toolId: string): Promise<ToolDetails> {
 }
 
 export async function createTool(toolData: Omit<ToolDetails, 'tool_id' | 'created_at' | 'updated_at' | 'owner_id' | 'is_active'>): Promise<ToolDetails> {
-  // Use the existing admin agent ID
-  const adminAgentId = "00000000-0000-0000-0000-000000000003";
+  // Use the existing admin agent ID that matches our initialization script
+  const adminAgentId = "00000000-0000-0000-0000-000000000001";
 
   // Format the request data to match what the backend API expects
   const formattedData = {
     name: toolData.name,
     description: toolData.description,
     version: toolData.version || "1.0.0",
-    owner_id: adminAgentId, // Use the known admin agent ID
-    tool_metadata: {
-      api_endpoint: toolData.api_endpoint,
-      auth_method: toolData.auth_method,
-      auth_config: toolData.auth_config || {},
-      params: toolData.params || {},
-      tags: toolData.tags || [],
-      allowed_scopes: toolData.allowed_scopes || ["read"]
-    }
+    api_endpoint: toolData.api_endpoint,
+    auth_method: toolData.auth_method,
+    auth_config: toolData.auth_config || {},
+    params: toolData.params || {},
+    tags: toolData.tags || [],
+    allowed_scopes: toolData.allowed_scopes || ["read"],
+    owner_id: adminAgentId
   };
 
   console.log("Sending tool creation request:", formattedData);

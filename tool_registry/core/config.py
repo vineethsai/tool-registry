@@ -1,139 +1,169 @@
 import logging
-import logging.config
 import os
-from typing import Optional
+import uuid
+from typing import List, Optional, Dict, Any, Union
+
+import hvac
+import redis
+from pydantic import validator, field_validator
 from pydantic_settings import BaseSettings
-from pydantic import Field
-from hvac import Client as VaultClient
-from dotenv import load_dotenv
-import secrets
 
-load_dotenv()
+# Set up logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 
-# Define logging configuration dictionary
-LOGGING_CONFIG = {
-    "version": 1,
-    "disable_existing_loggers": False,
-    "formatters": {
-        "default": {
-            "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            "datefmt": "%Y-%m-%d %H:%M:%S",
-        },
-    },
-    "handlers": {
-        "console": {
-            "class": "logging.StreamHandler",
-            "formatter": "default",
-            "level": "DEBUG",  # Capture debug level and above
-        },
-    },
-    "loggers": {
-        "tool_registry": {  # Root logger for the application
-            "handlers": ["console"],
-            "level": "INFO",  # Default level for the app
-            "propagate": False,
-        },
-        "uvicorn.access": {
-            "handlers": ["console"],
-            "level": "INFO",
-            "propagate": False,
-        },
-        "uvicorn.error": {
-            "handlers": ["console"],
-            "level": "INFO",
-            "propagate": False,
-        },
-    },
-    "root": { # Catch-all root logger
-        "handlers": ["console"],
-        "level": "WARNING", # Log warnings and above from other libraries
-    },
-}
+# Configure specific loggers
+logging.getLogger("uvicorn").setLevel(logging.INFO)
+logging.getLogger("uvicorn.error").setLevel(logging.WARNING)
+logging.getLogger("uvicorn.access").setLevel(logging.INFO)
+logging.getLogger("fastapi").setLevel(logging.INFO)
+logging.getLogger("sqlalchemy").setLevel(logging.WARNING)
+
+# Get the logger for this module
+logger = logging.getLogger(__name__)
+
+
+class SecretManager:
+    """Class to handle secrets management with HashiCorp Vault."""
+
+    def __init__(self, vault_url: str, vault_token: str, mount_point: str = "secret"):
+        """Initialize the Vault client if credentials are provided."""
+        self.client = None
+        if vault_url and vault_token:
+            try:
+                self.client = hvac.Client(url=vault_url, token=vault_token)
+                if not self.client.is_authenticated():
+                    logger.warning("Vault client failed to authenticate")
+                    self.client = None
+                else:
+                    logger.info("Vault client authenticated successfully")
+                self.mount_point = mount_point
+            except Exception as e:
+                logger.error(f"Failed to initialize Vault client: {e}")
+                self.client = None
+        else:
+            logger.info("Vault credentials not provided, using environment variables")
+
+    def get_secret(self, path: str, key: str) -> Optional[str]:
+        """Get a secret from Vault or return None if not available."""
+        if not self.client:
+            return None
+
+        try:
+            response = self.client.secrets.kv.v2.read_secret_version(
+                path=path, mount_point=self.mount_point
+            )
+            data = response.get("data", {}).get("data", {})
+            return data.get(key)
+        except Exception as e:
+            logger.error(f"Failed to retrieve secret {path}/{key}: {e}")
+            return None
+
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
-    
-    # Database
-    database_url: str = Field(
-        default_factory=lambda: os.getenv("DATABASE_URL", "sqlite:///./tool_registry.db")
-    )
-    
-    # HashiCorp Vault settings
-    vault_url: Optional[str] = None
-    vault_token: Optional[str] = None
-    vault_mount_point: str = "secret"
-    
+
+    # App settings
+    APP_NAME: str = "Tool Registry API"
+    API_PREFIX: str = "/api/v1"
+    DOCS_URL: str = "/docs"
+    REDOC_URL: str = "/redoc"
+    OPENAPI_URL: str = "/openapi.json"
+    APP_VERSION: str = "2.0.0"
+    DEBUG: bool = False
+    TEST_MODE: bool = False
+    AUTH_DISABLED: bool = True
+
+    # Instance ID for distributed deployments
+    INSTANCE_ID: str = str(uuid.uuid4())
+
+    # Database settings
+    DATABASE_URL: str = "postgresql://postgres:password@db:5432/toolregistry"
+    DATABASE_POOL_SIZE: int = 5
+    DATABASE_MAX_OVERFLOW: int = 10
+    DATABASE_POOL_RECYCLE: int = 3600
+
+    # Redis settings
+    REDIS_URL: str = "redis://redis:6379/0"
+    REDIS_TTL: int = 3600  # Default TTL in seconds
+
     # JWT settings
-    jwt_secret_key: str = Field(default_factory=lambda: secrets.token_hex(32))
-    jwt_algorithm: str = "HS256"
-    jwt_expiration_minutes: int = 30
-    
+    JWT_SECRET_KEY: str = "insecure_jwt_secret"
+    JWT_ALGORITHM: str = "HS256"
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    JWT_REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # CORS settings
+    CORS_ORIGINS: List[str] = ["*"]
+    CORS_ALLOW_CREDENTIALS: bool = True
+    CORS_ALLOW_METHODS: List[str] = ["*"]
+    CORS_ALLOW_HEADERS: List[str] = ["*"]
+
     # Rate limiting
-    redis_url: Optional[str] = "redis://localhost:6379/0"
-    rate_limit: int = 100  # requests per time window
-    rate_limit_window: int = 60  # time window in seconds
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_PER_MINUTE: int = 100
+
+    # Path to postman collection
+    POSTMAN_COLLECTION_PATH: str = "./postman/tool_registry_api_collection.json"
+    POSTMAN_ENVIRONMENT_PATH: str = "./postman/tool_registry_environment.json"
+
+    # Vault settings
+    VAULT_URL: Optional[str] = None
+    VAULT_TOKEN: Optional[str] = None
+    VAULT_MOUNT_POINT: str = "secret"
+
+    # Instance metrics collection
+    METRICS_ENABLED: bool = True
     
-    # CORS Settings
-    # Comma-separated list of allowed origins
-    cors_allowed_origins: str = Field(
-        default="http://localhost:3000,http://localhost:8000,http://localhost:8080",
-        description="Comma-separated list of allowed origins for CORS"
-    )
-    # Whether to allow credentials
-    cors_allow_credentials: bool = True
-    # Comma-separated list of allowed methods
-    cors_allowed_methods: str = "GET,POST,PUT,DELETE,OPTIONS"
-    # Comma-separated list of allowed headers
-    cors_allowed_headers: str = "*"
-    
-    # Logging level - will be used to set the app logger level
-    log_level: str = Field(default="INFO")
-    
+    # Security settings
+    ENCRYPTION_KEY: str = "insecure_encryption_key"
+    ADMIN_API_KEY: str = "admin-api-key"
+
+    @field_validator("DATABASE_URL")
+    def validate_database_url(cls, v: str) -> str:
+        """Validate database URL and ensure it's properly formatted."""
+        if not v:
+            raise ValueError("DATABASE_URL must be provided")
+        return v
+
+    def get_redis_client(self) -> redis.Redis:
+        """Get a Redis client instance."""
+        if not hasattr(self, "_redis_client"):
+            try:
+                self._redis_client = redis.from_url(self.REDIS_URL)
+                # Test the connection
+                self._redis_client.ping()
+                logger.info("Redis connection established successfully")
+            except Exception as e:
+                logger.error(f"Failed to connect to Redis: {e}")
+                self._redis_client = None
+        return self._redis_client
+
     class Config:
         env_file = ".env"
-        env_file_encoding = "utf-8"
+        case_sensitive = True
 
-class SecretManager:
-    def __init__(self, settings: Settings):
-        self.vault_client = VaultClient(
-            url=settings.vault_url,
-            token=settings.vault_token
-        )
-        self.vault_path = settings.vault_mount_point
-    
-    def get_secret(self, path: str) -> dict:
-        """Get a secret from Vault."""
-        try:
-            response = self.vault_client.secrets.kv.v2.read_secret_version(
-                path=f"{self.vault_path}/{path}"
-            )
-            return response["data"]["data"]
-        except Exception as e:
-            print(f"Error retrieving secret: {e}")
-            return {}
-    
-    def set_secret(self, path: str, data: dict) -> bool:
-        """Set a secret in Vault."""
-        try:
-            self.vault_client.secrets.kv.v2.create_or_update_secret(
-                path=f"{self.vault_path}/{path}",
-                secret=data
-            )
-            return True
-        except Exception as e:
-            print(f"Error setting secret: {e}")
-            return False
 
-# Initialize settings
+# Create settings instance
 settings = Settings()
 
-# Configure logging
-LOGGING_CONFIG["loggers"]["tool_registry"]["level"] = settings.log_level.upper()
-logging.config.dictConfig(LOGGING_CONFIG)
-
 # Initialize secret manager
-secret_manager = SecretManager(settings)
+secret_manager = SecretManager(
+    vault_url=settings.VAULT_URL,
+    vault_token=settings.VAULT_TOKEN,
+    mount_point=settings.VAULT_MOUNT_POINT,
+)
 
-# Get a logger instance for this module (optional, for testing config)
-logger = logging.getLogger(__name__)
-logger.info(f"Logging configured with level: {settings.log_level.upper()}") 
+# Configure log level based on settings
+log_level = logging.INFO if not settings.DEBUG else logging.DEBUG
+logging.getLogger().setLevel(log_level)
+logger.setLevel(log_level)
+
+logger.info(f"Starting application with version: {settings.APP_VERSION}")
+logger.info(f"Authentication disabled: {settings.AUTH_DISABLED}")
+logger.info(f"Environment: {'Development' if settings.DEBUG else 'Production'}")
+logger.info(f"Test mode: {settings.TEST_MODE}")
+logger.info(f"Using database: {settings.DATABASE_URL.split('@')[1] if '@' in settings.DATABASE_URL else settings.DATABASE_URL}")
+logger.info(f"Using Redis: {settings.REDIS_URL}") 

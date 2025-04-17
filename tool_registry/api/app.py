@@ -11,6 +11,17 @@ import jwt
 from fastapi.responses import JSONResponse
 import json
 from fastapi.middleware.cors import CORSMiddleware
+import os
+import sys
+import importlib
+import uuid
+
+# Import from the main module
+sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
+from tool_registry.main import policies as global_policies
+from tool_registry.main import tools as global_tools
+from tool_registry.main import agents as global_agents
+from tool_registry.main import access_logs as global_access_logs
 
 from ..core.registry import ToolRegistry
 from ..core.auth import AuthService, AgentAuth, JWTToken
@@ -1040,27 +1051,53 @@ async def get_access_logs():
     
     Returns a list of access log entries with timestamps and success status.
     """
-    # For testing, we'll return some mock data
-    now = datetime.utcnow()
-    logs = []
+    # First, try to get access logs from the global dictionary
+    result_logs = []
     
-    # Create a few sample log entries with proper fields matching AccessLogResponse model exactly
-    for i in range(3):
-        log_id = uuid4()
-        # Return raw dictionaries that match the AccessLogResponse model exactly
-        logs.append({
-            "log_id": log_id,
-            "agent_id": UUID("00000000-0000-0000-0000-000000000001"),
-            "tool_id": UUID("00000000-0000-0000-0000-000000000003"),
-            "credential_id": UUID("00000000-0000-0000-0000-000000000004"),
-            "timestamp": now - timedelta(minutes=i*5),
-            "action": f"test_action_{i}",
-            "success": True,
-            "error_message": None,
-            "metadata": {}
-        })
+    # Convert the global access logs to response objects
+    for log_id, log in global_access_logs.items():
+        # Create response object
+        try:
+            response_log = AccessLogResponse(
+                log_id=log.log_id if isinstance(log.log_id, UUID) else UUID(log.log_id),
+                agent_id=log.agent_id if isinstance(log.agent_id, UUID) else UUID(log.agent_id),
+                tool_id=log.tool_id if isinstance(log.tool_id, UUID) else UUID(log.tool_id),
+                timestamp=log.created_at if hasattr(log, 'created_at') else datetime.utcnow(),
+                action=log.action if hasattr(log, 'action') else "access",
+                success=log.access_granted if hasattr(log, 'access_granted') else False,
+                credential_id=log.credential_id if hasattr(log, 'credential_id') else None,
+                error_message=log.reason if hasattr(log, 'reason') and not log.access_granted else None,
+                metadata=log.request_data if hasattr(log, 'request_data') else {}
+            )
+            result_logs.append(response_log)
+        except Exception as e:
+            # Skip logs with invalid format
+            logger.warning(f"Error formatting access log: {e}")
+            continue
     
-    return logs
+    # If no logs found in global dictionary, use mock data as fallback
+    if not result_logs:
+        now = datetime.utcnow()
+        
+        # Create a few sample log entries with proper fields
+        for i in range(3):
+            log_id = uuid4()
+            result_logs.append(AccessLogResponse(
+                log_id=log_id,
+                agent_id=UUID("00000000-0000-0000-0000-000000000001"),
+                tool_id=UUID("00000000-0000-0000-0000-000000000003"),
+                credential_id=UUID("00000000-0000-0000-0000-000000000004"),
+                timestamp=now - timedelta(minutes=i*5),
+                action=f"test_action_{i}",
+                success=True,
+                error_message=None,
+                metadata={}
+            ))
+    
+    # Sort by timestamp, newest first
+    result_logs.sort(key=lambda x: x.timestamp, reverse=True)
+    
+    return result_logs
 
 @app.get("/agents", response_model=List[AgentResponse], tags=["Agents"])
 @monitor_request
@@ -1078,34 +1115,66 @@ async def list_agents(
     
     Returns a paginated list of agents.
     """
-    # For demo purposes, return a few agents
-    agents = []
-    for i in range(3):
-        agent_id = UUID(f"00000000-0000-0000-0000-00000000000{i+1}")
-        agent_type_val = "user" if i == 0 else "bot" if i == 1 else "service"
-        
+    # First, try to get agents from the global dictionary
+    result_agents = []
+    
+    # Convert the global agents to response objects
+    for agent_id, agent in global_agents.items():
+        # Filter by agent_type if provided
+        agent_type_val = "user"  # Default type
+        if hasattr(agent, 'roles'):
+            if "admin" in agent.roles:
+                agent_type_val = "admin"
+            elif "tool_publisher" in agent.roles:
+                agent_type_val = "service"
+            
         # Skip if agent_type filter is provided and doesn't match
         if agent_type and agent_type != agent_type_val:
             continue
             
-        agents.append(AgentResponse(
-            agent_id=agent_id,
-            name=f"Test Agent {i+1}",
-            description=f"Description for agent {i+1}",
-            roles=["user"] if i == 0 else ["tool_publisher"] if i == 1 else ["admin"],
-            creator=UUID("00000000-0000-0000-0000-000000000001"),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
-            request_count=i*10,
-            allowed_tools=[],
-            is_admin=(i == 2)
-        ))
+        # Create response object
+        response_agent = AgentResponse(
+            agent_id=agent.agent_id if isinstance(agent.agent_id, UUID) else UUID(agent.agent_id),
+            name=agent.name,
+            description=agent.description if hasattr(agent, 'description') else "",
+            roles=agent.roles if hasattr(agent, 'roles') else [],
+            creator=agent.creator if hasattr(agent, 'creator') else UUID("00000000-0000-0000-0000-000000000001"),
+            created_at=agent.created_at if hasattr(agent, 'created_at') else datetime.utcnow(),
+            updated_at=agent.updated_at if hasattr(agent, 'updated_at') else datetime.utcnow(),
+            request_count=agent.request_count if hasattr(agent, 'request_count') else 0,
+            allowed_tools=agent.allowed_tools if hasattr(agent, 'allowed_tools') else [],
+            is_admin="admin" in (agent.roles if hasattr(agent, 'roles') else [])
+        )
+        result_agents.append(response_agent)
+    
+    # If no agents found in global dictionary, use mock data as fallback
+    if not result_agents:
+        for i in range(3):
+            agent_id = UUID(f"00000000-0000-0000-0000-00000000000{i+1}")
+            agent_type_val = "user" if i == 0 else "bot" if i == 1 else "service"
+            
+            # Skip if agent_type filter is provided and doesn't match
+            if agent_type and agent_type != agent_type_val:
+                continue
+                
+            result_agents.append(AgentResponse(
+                agent_id=agent_id,
+                name=f"Test Agent {i+1}",
+                description=f"Description for agent {i+1}",
+                roles=["user"] if i == 0 else ["tool_publisher"] if i == 1 else ["admin"],
+                creator=UUID("00000000-0000-0000-0000-000000000001"),
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+                request_count=i*10,
+                allowed_tools=[],
+                is_admin=(i == 2)
+            ))
     
     # Apply pagination
     start = (page - 1) * page_size
     end = start + page_size
     
-    return agents[start:end]
+    return result_agents[start:end]
 
 @app.get("/agents/{agent_id}", response_model=AgentResponse, tags=["Agents"])
 @monitor_request
@@ -1117,7 +1186,24 @@ async def get_agent(agent_id: UUID):
     
     Returns the agent details if found.
     """
-    # For demo purposes, return a mock agent
+    # First, check if the agent exists in the global dictionary
+    agent_id_str = str(agent_id)
+    if agent_id_str in global_agents:
+        agent = global_agents[agent_id_str]
+        return AgentResponse(
+            agent_id=agent.agent_id if isinstance(agent.agent_id, UUID) else UUID(agent.agent_id),
+            name=agent.name,
+            description=agent.description if hasattr(agent, 'description') else "",
+            roles=agent.roles if hasattr(agent, 'roles') else [],
+            creator=agent.creator if hasattr(agent, 'creator') else UUID("00000000-0000-0000-0000-000000000001"),
+            created_at=agent.created_at if hasattr(agent, 'created_at') else datetime.utcnow(),
+            updated_at=agent.updated_at if hasattr(agent, 'updated_at') else datetime.utcnow(),
+            request_count=agent.request_count if hasattr(agent, 'request_count') else 0,
+            allowed_tools=agent.allowed_tools if hasattr(agent, 'allowed_tools') else [],
+            is_admin="admin" in (agent.roles if hasattr(agent, 'roles') else [])
+        )
+    
+    # Fallback to mock data for test agents
     if str(agent_id) == "00000000-0000-0000-0000-000000000001":
         return AgentResponse(
             agent_id=agent_id,
@@ -1204,36 +1290,62 @@ async def list_policies(
     
     Returns a paginated list of policies.
     """
-    # For demo purposes, return a few policies
-    policies = []
-    for i in range(3):
-        policy_id = UUID(f"70000000-0000-0000-0000-00000000000{i+1}")
-        policy_tool_id = UUID("00000000-0000-0000-0000-000000000003")
-        
-        # Skip if tool_id filter is provided and doesn't match
-        if tool_id and tool_id != policy_tool_id:
+    # First, try to get policies from the global dictionary
+    result_policies = []
+    
+    # Convert the global policies to response objects
+    for policy_id, policy in global_policies.items():
+        # If tool_id filter is provided, filter by it
+        if tool_id and hasattr(policy, 'tool_id') and policy.tool_id != tool_id:
             continue
             
-        policies.append(PolicyResponse(
-            policy_id=policy_id,
-            name=f"Test Policy {i+1}",
-            description=f"Description for policy {i+1}",
-            tool_id=policy_tool_id,
-            allowed_scopes=["read"] if i == 0 else ["read", "write"] if i == 1 else ["read", "write", "execute"],
-            conditions={"max_requests_per_day": 1000 * (i+1)},
-            rules={"require_approval": i == 2, "log_usage": True},
-            priority=10 * (i+1),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
-            created_by=UUID("00000000-0000-0000-0000-000000000001"),
-            is_active=True
-        ))
+        # Create response object
+        response_policy = PolicyResponse(
+            policy_id=policy.policy_id if isinstance(policy.policy_id, UUID) else UUID(policy.policy_id),
+            name=policy.name,
+            description=policy.description,
+            tool_id=policy.tool_id if hasattr(policy, 'tool_id') else None,
+            allowed_scopes=policy.allowed_scopes if hasattr(policy, 'allowed_scopes') else [],
+            conditions=policy.conditions if hasattr(policy, 'conditions') else {},
+            rules=policy.rules if hasattr(policy, 'rules') else {},
+            priority=policy.priority,
+            is_active=policy.is_active,
+            created_at=policy.created_at,
+            updated_at=policy.updated_at,
+            created_by=policy.created_by
+        )
+        result_policies.append(response_policy)
+    
+    # If no policies found in global dictionary, use mock data as fallback
+    if not result_policies:
+        for i in range(3):
+            policy_id = UUID(f"70000000-0000-0000-0000-00000000000{i+1}")
+            policy_tool_id = UUID("00000000-0000-0000-0000-000000000003")
+            
+            # Skip if tool_id filter is provided and doesn't match
+            if tool_id and tool_id != policy_tool_id:
+                continue
+                
+            result_policies.append(PolicyResponse(
+                policy_id=policy_id,
+                name=f"Test Policy {i+1}",
+                description=f"Description for policy {i+1}",
+                tool_id=policy_tool_id,
+                allowed_scopes=["read"] if i == 0 else ["read", "write"] if i == 1 else ["read", "write", "execute"],
+                conditions={"max_requests_per_day": 1000 * (i+1)},
+                rules={"require_approval": i == 2, "log_usage": True},
+                priority=10 * (i+1),
+                created_at=datetime.utcnow(),
+                updated_at=datetime.utcnow(),
+                created_by=UUID("00000000-0000-0000-0000-000000000001"),
+                is_active=True
+            ))
     
     # Apply pagination
     start = (page - 1) * page_size
     end = start + page_size
     
-    return policies[start:end]
+    return result_policies[start:end]
 
 @app.get("/policies/{policy_id}", response_model=PolicyResponse, tags=["Policies"])
 @monitor_request
@@ -1245,7 +1357,26 @@ async def get_policy(policy_id: UUID):
     
     Returns the policy details if found.
     """
-    # For demo purposes, return a mock policy
+    # First, check if the policy exists in the global dictionary
+    policy_id_str = str(policy_id)
+    if policy_id_str in global_policies:
+        policy = global_policies[policy_id_str]
+        return PolicyResponse(
+            policy_id=policy.policy_id if isinstance(policy.policy_id, UUID) else UUID(policy.policy_id),
+            name=policy.name,
+            description=policy.description,
+            tool_id=policy.tool_id if hasattr(policy, 'tool_id') else None,
+            allowed_scopes=policy.allowed_scopes if hasattr(policy, 'allowed_scopes') else [],
+            conditions=policy.conditions if hasattr(policy, 'conditions') else {},
+            rules=policy.rules if hasattr(policy, 'rules') else {},
+            priority=policy.priority,
+            is_active=policy.is_active,
+            created_at=policy.created_at,
+            updated_at=policy.updated_at,
+            created_by=policy.created_by
+        )
+    
+    # Fallback to mock data for test policies
     if str(policy_id).startswith("7000000"):
         return PolicyResponse(
             policy_id=policy_id,
@@ -1459,6 +1590,9 @@ async def list_access_requests(
     
     return requests[start:end]
 
+# Create an in-memory storage for credentials since it's not in main.py
+global_credentials = {}
+
 @app.post("/credentials", response_model=CredentialResponse, tags=["Credentials"])
 @monitor_request
 async def create_credential(credential: CredentialCreateRequest):
@@ -1486,8 +1620,8 @@ async def create_credential(credential: CredentialCreateRequest):
         # Use scope or default to read
         scope = credential.scope or ["read"]
         
-        # Return the created credential
-        return CredentialResponse(
+        # Create the credential response
+        credential_response = CredentialResponse(
             credential_id=credential_id,
             agent_id=credential.agent_id,
             tool_id=credential.tool_id,
@@ -1499,6 +1633,11 @@ async def create_credential(credential: CredentialCreateRequest):
             is_active=True,
             context={"purpose": "API access"}
         )
+        
+        # Store in our global dictionary
+        global_credentials[str(credential_id)] = credential_response
+        
+        return credential_response
     except Exception as e:
         logger.error(f"Error creating credential: {e}")
         raise HTTPException(
@@ -1524,57 +1663,84 @@ async def list_credentials(
     
     Returns a paginated list of credentials (without sensitive values).
     """
-    # For demo purposes, return a few credentials
-    credentials = []
-    now = datetime.utcnow()
+    # First, try to get credentials from the global dictionary
+    result_credentials = []
     
-    for i in range(3):
-        credential_id = UUID(f"90000000-0000-0000-0000-00000000000{i+1}")
-        credential_agent_id = UUID("00000000-0000-0000-0000-000000000001")
-        credential_tool_id = UUID("00000000-0000-0000-0000-000000000003")
-        
+    # Convert the global credentials to response objects and apply filters
+    for credential_id, credential in global_credentials.items():
         # Apply filters if provided
-        if agent_id and agent_id != credential_agent_id:
-            continue
-        if tool_id and tool_id != credential_tool_id:
+        if agent_id and (
+            not hasattr(credential, 'agent_id') or 
+            str(credential.agent_id) != str(agent_id)
+        ):
             continue
             
-        credentials.append(CredentialResponse(
-            credential_id=credential_id,
-            agent_id=credential_agent_id,
-            tool_id=credential_tool_id,
-            token=f"tk_{credential_id.hex[:16]}",
-            scope=["read", "write"] if i > 0 else ["read"],
-            credential_type="api_key" if i == 0 else "oauth2" if i == 1 else "basic",
-            expires_at=now + timedelta(days=30-i),
-            created_at=now - timedelta(days=i),
-            is_active=True,
-            context={"purpose": "API access"}
-        ))
+        if tool_id and (
+            not hasattr(credential, 'tool_id') or
+            str(credential.tool_id) != str(tool_id)
+        ):
+            continue
+            
+        # Add to results
+        result_credentials.append(credential)
+    
+    # If no credentials found in global dictionary, use mock data as fallback
+    if not result_credentials:
+        now = datetime.utcnow()
+        for i in range(3):
+            credential_id = UUID(f"90000000-0000-0000-0000-00000000000{i+1}")
+            credential_agent_id = UUID("00000000-0000-0000-0000-000000000001")
+            credential_tool_id = UUID("00000000-0000-0000-0000-000000000003")
+            
+            # Apply filters if provided
+            if agent_id and agent_id != credential_agent_id:
+                continue
+            if tool_id and tool_id != credential_tool_id:
+                continue
+                
+            result_credentials.append(CredentialResponse(
+                credential_id=credential_id,
+                agent_id=credential_agent_id,
+                tool_id=credential_tool_id,
+                token=f"tk_{credential_id.hex[:16]}",
+                scope=["read", "write"] if i > 0 else ["read"],
+                credential_type="api_key" if i == 0 else "oauth2" if i == 1 else "basic",
+                expires_at=now + timedelta(days=30-i),
+                created_at=now - timedelta(days=i),
+                is_active=True,
+                context={"purpose": "API access"}
+            ))
     
     # Apply pagination
     start = (page - 1) * page_size
     end = start + page_size
     
-    return credentials[start:end]
+    return result_credentials[start:end]
 
 @app.get("/credentials/{credential_id}", response_model=CredentialResponse, tags=["Credentials"])
 @monitor_request
 async def get_credential(credential_id: UUID):
     """Get a specific credential by ID."""
-    # Check if credential exists using our validation logic
+    # First, check if the credential exists in the global dictionary
+    credential_id_str = str(credential_id)
+    if credential_id_str in global_credentials:
+        return global_credentials[credential_id_str]
+    
+    # Check if credential exists using our validation logic as fallback
     if is_valid_credential_id(credential_id):
         # Return a mock credential for testing
-        return {
-            "credential_id": credential_id,
-            "agent_id": UUID("00000000-0000-0000-0000-000000000001"),
-            "tool_id": UUID("00000000-0000-0000-0000-000000000003"),
-            "token": "test-token",
-            "expires_at": (datetime.utcnow() + timedelta(hours=24)).isoformat(),
-            "created_at": datetime.utcnow().isoformat(),
-            "scope": ["read", "write"],
-            "context": {"purpose": "testing"}
-        }
+        return CredentialResponse(
+            credential_id=credential_id,
+            agent_id=UUID("00000000-0000-0000-0000-000000000001"),
+            tool_id=UUID("00000000-0000-0000-0000-000000000003"),
+            token="test-token",
+            scope=["read", "write"],
+            credential_type="api_key",
+            expires_at=datetime.utcnow() + timedelta(hours=24),
+            created_at=datetime.utcnow(),
+            is_active=True,
+            context={"purpose": "testing"}
+        )
     
     # If credential not found, raise 404
     raise HTTPException(

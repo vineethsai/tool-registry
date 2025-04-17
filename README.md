@@ -1,4 +1,111 @@
-# Tool Registry
+# Tool Registry with Frontend
+
+This repository contains a complete, containerized version of the Tool Registry application, including:
+
+- **Backend API**: FastAPI-based RESTful API that manages tools, agents, policies, and credentials
+- **Frontend**: React-based UI for browsing and managing tools
+- **Database**: PostgreSQL database for persistent storage
+- **Redis**: For caching and session management
+- **Documentation**: API documentation server
+
+## Quick Start
+
+### Prerequisites
+
+- Docker and Docker Compose
+- Git
+
+### Running the Application
+
+1. Clone the repository:
+
+```bash
+git clone https://github.com/yourusername/tool-registry.git
+cd tool-registry
+```
+
+2. Start the containers:
+
+```bash
+docker-compose up -d
+```
+
+3. Access the application:
+
+- Frontend UI: http://localhost
+- API: http://localhost:8000
+- API Documentation: http://localhost:9000
+
+## Architecture
+
+The application is composed of several Docker containers:
+
+- `app`: The FastAPI backend application
+- `frontend`: The React frontend application
+- `db`: PostgreSQL database
+- `redis`: Redis cache
+- `docs`: API documentation server
+
+All these services are configured to work together seamlessly through Docker Compose.
+
+## Configuration
+
+The application can be configured via environment variables in the `docker-compose.yml` file:
+
+### Backend Configuration
+
+- `DATABASE_URL`: PostgreSQL connection string
+- `REDIS_URL`: Redis connection string
+- `JWT_SECRET_KEY`: Secret key for JWT token generation
+- `LOG_LEVEL`: Logging level (INFO, DEBUG, etc.)
+- `CORS_ORIGINS`: Comma-separated list of allowed origins for CORS
+
+### Frontend Configuration
+
+- `VITE_API_URL`: URL of the backend API
+
+## Development
+
+### Running in Development Mode
+
+For development, you can run the frontend and backend separately:
+
+1. Start the backend and database:
+
+```bash
+docker-compose up -d app db redis
+```
+
+2. Run the frontend in development mode:
+
+```bash
+cd genai-tool-explorer
+npm install
+npm run dev
+```
+
+### Building the Images
+
+To rebuild the Docker images:
+
+```bash
+docker-compose build
+```
+
+## Testing
+
+The application includes comprehensive API tests that can be run using:
+
+```bash
+docker-compose up -d
+./test_all_endpoints.py
+```
+
+## Deployment
+
+For production deployment, update the environment variables in `docker-compose.yml` with secure values, especially `JWT_SECRET_KEY`.
+
+## Tool Registry
 
 Tool Registry is a comprehensive system for managing, securing, and controlling access to AI tools and services. It enables organizations to track, govern, and monitor tool usage in AI applications.
 
