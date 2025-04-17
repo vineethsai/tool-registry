@@ -12,6 +12,7 @@ class AgentCreate(BaseModel):
     creator: Optional[UUID] = Field(None, description="ID of the agent creating this agent")
     is_admin: bool = Field(False, description="Whether the agent has admin privileges")
     roles: List[str] = []
+    permissions: List[str] = []
 
 class AgentUpdate(BaseModel):
     """Request model for updating an existing agent."""

@@ -23,6 +23,16 @@ export interface ToolDetails extends Tool {
   owner_id: string;
   is_active: boolean;
   allowed_scopes?: string[];
+  tool_metadata?: {
+    schema_version: string;
+    schema_type: string;
+    schema_data: Record<string, any>;
+    inputs: Record<string, any>;
+    outputs: Record<string, any>;
+    documentation_url?: string;
+    provider?: string;
+    tags?: string[];
+  };
 }
 
 // Policy Types

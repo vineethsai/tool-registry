@@ -1,31 +1,18 @@
-FROM python:3.10-slim
+FROM python:3.9-slim
 
 WORKDIR /app
 
 # Version information
-LABEL version="2.0.0"
-LABEL description="Production-ready Docker image for Tool Registry API with PostgreSQL and Redis integration"
-LABEL maintainer="team@toolregistry.ai"
-
-# Set environment variables
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1 \
-    APP_VERSION=2.0.0 \
-    DEBUG=false \
-    AUTH_DISABLED=true \
-    METRICS_ENABLED=true \
-    DATABASE_URL=postgresql://postgres:password@db:5432/toolregistry \
-    REDIS_URL=redis://redis:6379/0
+LABEL version="2.0.1"
+LABEL description="Tool Registry API with comprehensive API endpoint testing and improved compatibility"
+LABEL maintainer="Vineeth Sai Narajala"
 
 # Install system dependencies
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        gcc \
-        python3-dev \
-        libpq-dev \
-        curl \
-        netcat-traditional \
-    && apt-get clean \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    netcat-openbsd \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Install email-validator explicitly first
@@ -46,12 +33,11 @@ RUN chmod +x start.sh
 RUN chmod +x init_admin.py
 
 # Create a non-root user to run the application
-RUN addgroup --system appgroup && \
-    adduser --system --group appuser && \
-    chown -R appuser:appgroup /app
+RUN adduser --disabled-password --gecos "" appuser
+RUN chown -R appuser:appuser /app
 
-# Create data directory for SQLite (fallback)
-RUN mkdir -p /data && chmod -R 777 /data
+# Create data directory for SQLite
+RUN mkdir -p /app/data && chown -R appuser:appuser /app/data
 
 # Ensure Postman collection files have correct permissions
 RUN mkdir -p /app/postman && \
@@ -72,9 +58,14 @@ USER appuser
 # Expose the port the app runs on
 EXPOSE 8000
 
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV DATABASE_URL=sqlite:///./data/tool_registry.db
+ENV APP_VERSION=2.0.1
+
 # Add health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+  CMD curl -f http://localhost:8000/health || exit 1
 
 # Command to run the application
-CMD ["uvicorn", "tool_registry.main:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["./start.sh"] 

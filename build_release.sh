@@ -3,7 +3,7 @@
 
 set -e  # Exit on any error
 
-VERSION="1.0.9"
+VERSION="2.0.1"
 IMAGE_NAME="tool-registry"
 REGISTRY="localhost"  # Change this to your Docker registry if needed
 
@@ -30,7 +30,7 @@ docker-compose -f docker-compose.yml up -d
 
 # Wait for services to start
 echo "Waiting for services to start..."
-sleep 10
+sleep 30
 
 # Test the API
 echo "Testing API health endpoint..."
@@ -38,7 +38,7 @@ curl -s http://localhost:8000/health | grep -q "status" && echo "Health check su
 
 # Run end-to-end test for comprehensive API testing
 echo "Running comprehensive API endpoint tests..."
-docker exec -it tool-registry-app-1 python test_all_endpoints.py
+docker exec -it tool-registry-app python test_all_endpoints.py
 
 echo ""
 echo "Tool Registry version $VERSION has been built and tagged."

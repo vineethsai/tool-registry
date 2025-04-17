@@ -108,7 +108,7 @@ app = FastAPI(
     
     **Note:** Authentication is currently disabled for development purposes.
     """,
-    version="1.0.8",
+    version="2.0.1",
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_tags=[
@@ -150,22 +150,9 @@ redis_client = Redis.from_url(settings.redis_url) if settings.redis_url else Non
 rate_limiter = RateLimiter(redis_client=redis_client, rate_limit=settings.rate_limit, time_window=settings.rate_limit_window)
 
 # Configure CORS middleware with settings from configuration
-origins = settings.cors_allowed_origins.split(",")
-# Add 127.0.0.1 equivalents for each localhost entry
-localhost_origins = [origin for origin in origins if "localhost" in origin]
-for origin in localhost_origins:
-    origins.append(origin.replace("localhost", "127.0.0.1"))
-
-# Add regex pattern for any localhost port
-allow_origin_regex = r"^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?$"
-
-logger.info(f"Configuring CORS with allowed origins: {origins}")
-logger.info(f"Allowing localhost with any port via regex: {allow_origin_regex}")
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_origin_regex=allow_origin_regex,
+    allow_origins=["*"],  # Allow all origins for now to debug
     allow_credentials=settings.cors_allow_credentials,
     allow_methods=settings.cors_allowed_methods.split(","),
     allow_headers=settings.cors_allowed_headers.split(",") if settings.cors_allowed_headers != "*" else ["*"],
@@ -943,7 +930,7 @@ async def health_check():
     """
     health_status = {
         "status": "healthy",
-        "version": "1.0.8",
+        "version": "2.0.1",
         "components": {
             "api": "healthy"
         }
@@ -1418,12 +1405,38 @@ async def create_policy(policy: PolicyCreate):
     policy_id = uuid4()
     now = datetime.utcnow()
     
+    # Create the policy object
+    from ..models import Policy as DBPolicy
+    
+    # Merge rules and conditions
+    rules = policy.rules or {}
+    if policy.allowed_scopes:
+        rules["allowed_scopes"] = policy.allowed_scopes
+    if policy.conditions:
+        rules.update(policy.conditions)
+    
+    # Create policy without tool_id since it's not directly supported
+    new_policy = DBPolicy(
+        policy_id=policy_id,
+        name=policy.name,
+        description=policy.description,
+        rules=rules,
+        priority=policy.priority or 10,
+        is_active=policy.is_active,
+        created_by=UUID("00000000-0000-0000-0000-000000000001"),
+        created_at=now,
+        updated_at=now
+    )
+    
+    # Store in global policies dictionary
+    global_policies[str(policy_id)] = new_policy
+    
     # Return the created policy
     return PolicyResponse(
         policy_id=policy_id,
         name=policy.name,
         description=policy.description,
-        tool_id=policy.tool_id,
+        tool_id=policy.tool_id,  # Include tool_id in response even though it's not stored this way
         allowed_scopes=policy.allowed_scopes,
         conditions=policy.conditions or {},
         rules=policy.rules or {},
@@ -1901,7 +1914,7 @@ async def get_stats():
                 "agents_count": 3,
                 "policies_count": 5,
                 "uptime_days": 30,
-                "version": "1.0.8"
+                "version": "2.0.1"
             },
             "performance": {
                 "average_response_time_ms": 145.0,

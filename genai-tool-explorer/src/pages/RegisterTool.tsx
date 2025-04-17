@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMutation } from "@tanstack/react-query";
@@ -33,6 +32,12 @@ const formSchema = z.object({
   tags: z.array(z.string()).min(1, {
     message: "At least one tag is required.",
   }),
+  schema_version: z.string().default("1.0"),
+  schema_type: z.string().default("openapi"),
+  documentation_url: z.string().url().optional().or(z.literal("")),
+  provider: z.string().optional().or(z.literal("")),
+  inputsDescription: z.string().optional().or(z.literal("")),
+  outputsDescription: z.string().optional().or(z.literal(""))
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -50,6 +55,12 @@ export default function RegisterTool() {
       auth_method: "api_key",
       version: "1.0.0",
       tags: [],
+      schema_version: "1.0",
+      schema_type: "openapi",
+      documentation_url: "",
+      provider: "",
+      inputsDescription: "",
+      outputsDescription: ""
     },
   });
 
@@ -72,23 +83,47 @@ export default function RegisterTool() {
   });
 
   const onSubmit = (values: FormValues) => {
-    // In a real implementation, you'd need to add auth_config and params based on the form inputs
+    const inputs: Record<string, any> = {};
+    if (values.inputsDescription) {
+      inputs["input"] = {
+        type: "string",
+        description: values.inputsDescription
+      };
+    }
+
+    const outputs: Record<string, any> = {};
+    if (values.outputsDescription) {
+      outputs["output"] = {
+        type: "string",
+        description: values.outputsDescription
+      };
+    }
+
     const toolData = {
-      // Ensure these required fields are explicitly included
       name: values.name,
       description: values.description,
       api_endpoint: values.api_endpoint,
       auth_method: values.auth_method,
       version: values.version,
       tags: values.tags,
-      // Additional required properties
       auth_config: {
         header_name: "X-API-Key",
         key_placeholder: "${API_KEY}",
       },
       params: {},
+      tool_metadata: {
+        schema_version: values.schema_version,
+        schema_type: values.schema_type,
+        schema_data: {},
+        inputs: inputs,
+        outputs: outputs,
+        documentation_url: values.documentation_url || undefined,
+        provider: values.provider || undefined,
+        tags: values.tags
+      }
     };
     
+    console.log("Sending tool creation request:", toolData);
     mutation.mutate(toolData);
   };
 
@@ -288,6 +323,136 @@ export default function RegisterTool() {
                     </FormItem>
                   )}
                 />
+
+                <div className="pt-6 border-t-2 border-gray-100">
+                  <h3 className="text-lg font-medium mb-4">Tool Metadata</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <FormField
+                      control={form.control}
+                      name="schema_version"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Schema Version</FormLabel>
+                          <FormControl>
+                            <Input {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            Version of the schema format
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="schema_type"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Schema Type</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select schema type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="openapi">OpenAPI</SelectItem>
+                              <SelectItem value="jsonschema">JSON Schema</SelectItem>
+                              <SelectItem value="custom">Custom</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Type of schema the tool uses
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <FormField
+                      control={form.control}
+                      name="documentation_url"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Documentation URL</FormLabel>
+                          <FormControl>
+                            <Input placeholder="https://docs.example.com/tool" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            URL to the tool's documentation
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="provider"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Provider</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Example Corp" {...field} />
+                          </FormControl>
+                          <FormDescription>
+                            Provider or creator of the tool
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-6">
+                    <FormField
+                      control={form.control}
+                      name="inputsDescription"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Input Parameters Description</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Describe the inputs required by the tool"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Describe what inputs the tool accepts
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="outputsDescription"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Output Format Description</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Describe the outputs produced by the tool"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormDescription>
+                            Describe what outputs the tool produces
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
 
                 <div className="flex justify-end gap-2">
                   <Button

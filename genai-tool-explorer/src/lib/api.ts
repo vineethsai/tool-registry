@@ -82,7 +82,8 @@ export async function createTool(toolData: Omit<ToolDetails, 'tool_id' | 'create
     params: toolData.params || {},
     tags: toolData.tags || [],
     allowed_scopes: toolData.allowed_scopes || ["read"],
-    owner_id: adminAgentId
+    owner_id: adminAgentId,
+    tool_metadata: toolData.tool_metadata
   };
 
   console.log("Sending tool creation request:", formattedData);

@@ -1,5 +1,81 @@
 # Release Notes
 
+## Tool Registry v2.0.1 (2025-04-17)
+
+### Overview
+
+This major release focuses on fixing critical bugs in the agent creation and policy management systems, as well as enhancing the overall stability and usability of the Tool Registry.
+
+### What's New
+
+1. **Fixed Agent Creation Bug**
+   - Added missing `permissions` field to the `AgentCreate` model
+   - Resolved error: "Error creating agent: 'AgentCreate' object has no attribute 'permissions'"
+   - Improved consistency between schema models and core service implementations
+
+2. **Policy Management Improvements**
+   - Fixed the `create_policy` function to properly handle the `tool_id` parameter
+   - Corrected how policies are stored in the database, accommodating the many-to-many relationship between tools and policies
+   - Merged rules and conditions properly for policy creation
+
+3. **Enhanced CORS Configuration**
+   - Simplified CORS middleware to allow all origins for easier debugging and integration
+   - Fixed issues with cross-origin requests to policy endpoints
+   - Improved API accessibility for frontend applications
+
+4. **Version Upgrade**
+   - Upgraded version number to 2.0.1 to reflect significant changes
+   - Updated version references across the entire codebase for consistency
+
+### Docker Updates
+
+The Docker container has been updated with version 2.0.1 and includes:
+- Updated version labeling in Dockerfile
+- Consistent version numbering across all components
+- Improved environment variable configuration
+
+### Installation and Upgrade
+
+#### Docker Installation
+
+```bash
+# Pull and run the latest version
+docker pull ghcr.io/yourusername/tool-registry:2.0.1
+docker-compose up -d
+```
+
+#### Upgrading from v1.0.9
+
+```bash
+# Pull the latest changes
+git pull
+
+# Build and start the updated containers
+./build_release.sh
+```
+
+### Testing the New Features
+
+1. **Testing Agent Creation**
+   - Create a new agent with the fixed schema:
+   ```bash
+   curl -X POST "http://localhost:8000/agents" -H "Content-Type: application/json" -d '{"name":"Test Agent","description":"Testing agent creation","roles":["user"],"permissions":["access_tool:public"],"is_admin":false}'
+   ```
+
+2. **Testing Policy Creation**
+   - Create a new policy:
+   ```bash
+   curl -X POST "http://localhost:8000/policies" -H "Content-Type: application/json" -d '{"name":"Test Policy","description":"Testing policy creation","tool_id":"00000000-0000-0000-0000-000000000003","allowed_scopes":["read"],"conditions":{"max_requests_per_day":1000},"rules":{"require_approval":false,"log_usage":true},"priority":10,"is_active":true}'
+   ```
+
+### Known Issues
+
+- When running with Redis disabled, rate limiting falls back to in-memory storage with a warning
+
+### Contributors
+
+- Vineeth Sai Narajala
+
 ## Tool Registry v1.0.9 (2025-04-25)
 
 ### Overview

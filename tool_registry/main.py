@@ -740,7 +740,7 @@ def initialize_test_data():
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "version": "1.0.8"}
+    return {"status": "healthy", "version": "2.0.1"}
 
 def log_access(agent_id: UUID, tool_id: str, granted: bool, reason: str) -> None:
     """Log an access attempt."""
