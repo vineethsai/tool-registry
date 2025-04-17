@@ -26,7 +26,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -67,11 +67,13 @@ services:
       retries: 5
 
   frontend:
-    image: tool-registry-frontend:2.0.0
+    build:
+      context: ./genai-tool-explorer
+      dockerfile: Dockerfile
     container_name: tool-registry-frontend
     restart: always
     ports:
-      - "3000:3000"
+      - "3000:80"
     environment:
       - REACT_APP_API_URL=http://localhost:8000/api/v1
     depends_on:
